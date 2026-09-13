@@ -126,3 +126,15 @@ docs/papers/figures/envs/
 # SLURM stderr/stdout logs
 *.err
 *.out
+
+# Study runtime files (upstream datasets/ is SOURCE CODE; never ignore it).
+/runs/
+/checkpoints/
+/artifacts/
+.env.*
+*.pem
+# Permit explicitly curated compact outputs; raw runtime outputs remain external.
+!/outputs/
+/outputs/*
+!/outputs/README.md
+!/outputs/compact/
