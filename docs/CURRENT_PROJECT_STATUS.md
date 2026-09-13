@@ -14,11 +14,13 @@ User explicitly authorized autodl-jepa. Audit confirms RTX 5090, driver 595.71.0
 ## Environment decision / deviations
 Do not downgrade the functioning Blackwell CUDA stack to upstream torch2.3/cu121. Create data-disk venv `envs/lpwm-5090` with read-only system-site-packages inheritance from base; pip writes only to venv. This deliberately uses Python3.12 instead of upstream3.9, after auditing the imported PushT path. Upgrade Hydra1.2->1.3.2, W&B .13.1->.17.9 and scikit-image .19.3->.24 for compatibility; override NumPy2.3.2 with1.26.4 locally. Torch/torchvision constrained to existing versions. Remaining targeted dependencies are pinned. Do not install the full export's unused old transformers/tokenizers stack.
 
-Trusted upstream dataset/checkpoint loading uses TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD=1 for the PyTorch2.6+ default change; only verified official data and self-generated checkpoints may be loaded. Environment is not yet validated; no reproduction result exists.
+Trusted upstream dataset/checkpoint loading uses TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD=1 for the PyTorch2.6+ default change; only verified official data and self-generated checkpoints may be loaded. Environment validated: pip check, train/plan imports, PushT reset, CUDA attention forward/backward all passed. Worker correctness suite: 21 passed in 3.82s. No reproduction result exists yet. Effective package inventory is in manifests/WORKER_ENVIRONMENT_5090.json. Base remains numpy2.3.2/torch2.8+cu128 unchanged; project venv uses numpy1.26.4.
 
 ## Scientific status and gates
 - Dense/sparse reproduction: NOT RUN. Exact official cells documented; new runner records config/provenance/telemetry.
-- Pixel: implemented independently but NOT launched; Torch correctness gates unvalidated. Pixel will not interfere with official upstream runs.
+- Pixel: implemented independently but NOT launched as a research experiment; CPU Torch gradient/causality/action/overfit gates passed on the worker. Pixel will not interfere with official upstream runs.
 - Evaluator: physical metrics/ranking and frozen probe infrastructure implemented; simulator/checkpoint adapters and frozen episode partitions not finished.
 - Next: isolated environment/import/CUDA smoke and official PushT acquisition; then Gaussian tiny smoke, sparse tiny smoke, official Gaussian training+planning, official sparse training+planning sequentially.
-- Blockers: dependency compatibility, data transfer/footprint, full GPU correctness and VRAM remain unvalidated. No claims of JEPA advantage or upstream metric reproduction.
+- Blockers: official 2.79GB PushT archive downloading with bounded parallel ranges; official SHA256 recorded in acquisition script. Extraction, dataset GPU smoke and full-batch VRAM still pending. No claims of JEPA advantage or upstream metric reproduction.
+
+- Validated environment/deployment code SHA for upcoming smokes: 3e279431fc0b2db7467ecb99783750c8ba741bc3. Later documentation commits do not change this immutable snapshot.
