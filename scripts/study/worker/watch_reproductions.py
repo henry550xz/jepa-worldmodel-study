@@ -78,28 +78,30 @@ def retain_checkpoint(alias,run_id,m):
 
 
 def main():
-    p=argparse.ArgumentParser();p.add_argument('alias');p.add_argument('sha');p.add_argument('gaussian_run')
+    p=argparse.ArgumentParser();p.add_argument('alias');p.add_argument('sha');p.add_argument('gaussian_run');p.add_argument('--resume',action='store_true')
     a=p.parse_args()
     if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._-]*',a.alias) or not re.fullmatch(r'[0-9a-f]{40}',a.sha):raise ValueError('invalid alias/SHA')
     if not re.fullmatch(r'gaussian-[A-Za-z0-9_-]+',a.gaussian_run):raise ValueError('invalid Gaussian run')
     subprocess.run(['mountpoint','-q','/mnt/research'],check=True)
     path=STORE/'runs'/'reproduction-queue.json'
-    if path.exists():raise RuntimeError('queue record already exists; inspect before resuming')
-    state={'source_sha':a.sha,'alias':a.alias,'gaussian_run':a.gaussian_run,'status':'starting'}
+    if path.exists() and not a.resume:raise RuntimeError('queue record already exists; use --resume after inspection')
+    state=json.loads(path.read_text()) if path.exists() else {'source_sha':a.sha,'alias':a.alias,'gaussian_run':a.gaussian_run,'status':'starting'}
+    if state['source_sha']!=a.sha or state['gaussian_run']!=a.gaussian_run:raise ValueError('resume identity mismatch')
+    if state['status']=='complete':return
     record(path,state)
     try:
         m=manifest(a.alias,a.gaussian_run)
         if m['git_sha']!=a.sha or m['phase']!='reproduction':raise ValueError('wrong starting run')
         m=wait(a.alias,a.gaussian_run,'training',state,path)
-        launch_plan(a.alias,a.sha,a.gaussian_run)
+        if m['evaluation_settings']['status']=='not_run':launch_plan(a.alias,a.sha,a.gaussian_run)
         m=wait(a.alias,a.gaussian_run,'evaluation',state,path)
         retain_checkpoint(a.alias,a.gaussian_run,m)
         # Only launch sparse after Gaussian training AND official planning succeed.
         command=(f'cd {ROOT}/code/{a.sha} && nohup {ROOT}/envs/lpwm-5090/bin/python -m study.run '
             f'--method sparse --phase reproduction --dataset-version {m["dataset_version"]} '
             f'> {ROOT}/runs/sparse-reproduction-launch.log 2>&1 < /dev/null &')
-        remote(a.alias,command)
-        sparse=None
+        if not state.get('sparse_run'):remote(a.alias,command)
+        sparse=state.get('sparse_run')
         for _ in range(30):
             payload=remote(a.alias,f"/root/miniconda3/bin/python -c \"import pathlib,json; print(json.dumps([json.loads(p.read_text()) for p in pathlib.Path('{ROOT}/runs').glob('sparse-*/manifest.json')]))\"")
             candidates=[x for x in json.loads(payload) if x['phase']=='reproduction' and x['git_sha']==a.sha]
@@ -109,7 +111,7 @@ def main():
         if sparse is None:raise RuntimeError('sparse run failed to start')
         state['sparse_run']=sparse
         m=wait(a.alias,sparse,'training',state,path)
-        launch_plan(a.alias,a.sha,sparse)
+        if m['evaluation_settings']['status']=='not_run':launch_plan(a.alias,a.sha,sparse)
         m=wait(a.alias,sparse,'evaluation',state,path)
         retain_checkpoint(a.alias,sparse,m)
         state.update(status='complete',stage='complete',updated_at=time.time())
