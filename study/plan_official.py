@@ -39,10 +39,18 @@ def main():
         with (out/'resolved-config.yaml').open('w') as log:
             subprocess.run([sys.executable,'plan.py',*args,'--cfg','job','--resolve'],cwd=repo,env=env,stdout=log,stderr=subprocess.STDOUT,check=True)
         with (out/'plan.log').open('w') as log:
-            result=subprocess.run([sys.executable,'plan.py',*args],cwd=repo,env=env,stdout=log,stderr=subprocess.STDOUT)
+            result=subprocess.run([sys.executable,'-m','study.instrument_plan','--telemetry',str(out/'telemetry.json'),'--',*args],cwd=repo,env=env,stdout=log,stderr=subprocess.STDOUT)
         m['evaluation_settings']['status']='complete' if result.returncode==0 else 'failed'
         # Upstream emits planning logs; do not invent a standardized metrics file.
-        m['metrics_path']=str(out)
+        m['metrics_path']=str(out/'logs.json')
+        if (out/'telemetry.json').exists():
+            m['evaluation_settings'].update(json.loads((out/'telemetry.json').read_text()))
+        if (out/'logs.json').exists():
+            entries=[json.loads(line) for line in (out/'logs.json').read_text().splitlines() if line.strip()]
+            finals=[e for e in entries if any(k.startswith('final_eval/') for k in e)]
+            if finals:
+                (out/'metrics.json').write_text(json.dumps(finals[-1],indent=2)+'\n')
+                m['metrics_path']=str(out/'metrics.json')
         m['evaluation_settings']['exit_code']=result.returncode
     finally:
         if m['evaluation_settings']['status']=='running': m['evaluation_settings']['status']='failed'
