@@ -1,0 +1,4 @@
+# Refuse a dependency solve that replaces the worker's functioning CUDA stack.
+torch==2.8.0+cu128
+torchvision==0.23.0+cu128
+numpy==1.26.4

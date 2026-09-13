@@ -7,32 +7,35 @@ SHA=${2:?deployed 40-character commit SHA required}
 set -euo pipefail
 ROOT=$1; SHA=$2
 [[ $(findmnt -n -o TARGET -T /root/autodl-tmp) != / ]] || exit 1
-CONDA=/root/miniconda3/bin/conda
-[[ -x "$CONDA" ]] || { echo 'Conda missing: environment bootstrap needs a reviewed installer' >&2; exit 1; }
-PREFIX="$ROOT/envs/lpwm-$SHA"
+BASE=/root/miniconda3/bin/python
+"$BASE" - <<'PY'
+import torch, torchvision, sys
+assert sys.version_info[:2] == (3,12)
+assert torch.__version__ == '2.8.0+cu128'
+assert torchvision.__version__ == '0.23.0+cu128'
+assert torch.cuda.is_available()
+print('Verified existing Blackwell-capable torch',torch.__version__)
+PY
+PREFIX="$ROOT/envs/lpwm-5090"
 [[ ! -e "$PREFIX" ]] || { echo 'Refusing to modify existing environment' >&2; exit 1; }
-export CONDA_PKGS_DIRS="$ROOT/caches/conda-pkgs" PIP_CACHE_DIR="$ROOT/caches/pip" TMPDIR="$ROOT/caches/tmp"
+export PIP_CACHE_DIR="$ROOT/caches/pip" TMPDIR="$ROOT/caches/tmp" PIP_DISABLE_PIP_VERSION_CHECK=1
+export PYTHONDONTWRITEBYTECODE=1
 mkdir -p "$TMPDIR"
-# Preserve upstream export; generate a worker copy with the one disclosed extra pin.
-python3 - "$ROOT/code/$SHA/environment.yaml" "$ROOT/envs/environment-$SHA.yaml" <<'PY'
-from pathlib import Path
-import sys
-s=Path(sys.argv[1]).read_text()
-assert '  - pip:\n' in s
-Path(sys.argv[2]).write_text(s.replace('  - pip:\n','  - pip:\n      - numpy==1.26.4\n',1))
-PY
-"$CONDA" env create --prefix "$PREFIX" --file "$ROOT/envs/environment-$SHA.yaml"
+# Read-only inheritance avoids reinstalling working multi-GB CUDA packages.
+# All project additions/overrides go into this data-volume venv, never base.
+"$BASE" -m venv --system-site-packages "$PREFIX"
+"$PREFIX/bin/python" -m pip install --index-url https://pypi.tuna.tsinghua.edu.cn/simple \
+ --timeout 20 --retries 1 \
+ -c "$ROOT/code/$SHA/conf/study/worker-5090-constraints.txt" \
+ -r "$ROOT/code/$SHA/conf/study/worker-5090-requirements.txt"
 "$PREFIX/bin/python" -m pip check
-"$PREFIX/bin/python" - <<'PY'
-import torch, torchvision, hydra, decord, pygame, pymunk
-assert torch.cuda.is_available(), 'CUDA unavailable'
-print('torch', torch.__version__, 'CUDA runtime', torch.version.cuda)
-print('GPU', torch.cuda.get_device_name(0))
-PY
-# Version inventory only: do not dump environment variables or credential-bearing pip URLs.
 "$PREFIX/bin/python" - "$ROOT/envs/packages-$SHA.json" <<'PY'
-import importlib.metadata as m, json, sys
+import importlib.metadata as m, json, sys, torch, torchvision, hydra, decord, pygame, pymunk
 from pathlib import Path
+assert torch.cuda.is_available()
+a=torch.randn(64,64,device='cuda'); (a@a).sum().item()
+print('Python',sys.version.split()[0],'torch',torch.__version__,'CUDA',torch.version.cuda)
+print('GPU',torch.cuda.get_device_name(0),'prefix',sys.prefix)
 Path(sys.argv[1]).write_text(json.dumps(sorted((d.metadata['Name'],d.version) for d in m.distributions()),indent=2))
 PY
 REMOTE

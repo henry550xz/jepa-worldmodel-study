@@ -1,0 +1,23 @@
+# Compatibility profile: inherits read-only base torch 2.8.0+cu128 / torchvision 0.23.0+cu128.
+# Upstream Python-3.9 full export is not installed into the Python-3.12 worker base.
+numpy==1.26.4
+hydra-core==1.3.2
+hydra-submitit-launcher==1.2.0
+omegaconf==2.3.0
+accelerate==0.26.1
+wandb==0.17.9
+decord==0.6.0
+einops==0.4.1
+pygame==2.5.2
+pymunk==6.8.0
+gym==0.23.1
+scipy==1.13.1
+shapely==2.0.3
+opencv-python==4.6.0.66
+scikit-image==0.24.0
+imageio==2.34.1
+imageio-ffmpeg==0.4.9
+moviepy==1.0.3
+huggingface-hub==0.23.2
+submitit==1.5.1
+pytest==8.2.1

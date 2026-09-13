@@ -71,12 +71,17 @@ def main():
         planning_settings=plan,evaluation_settings={'seed':99,'n_evals':50,'status':'not_run'})
     run_id=manifest['run_id']
     overrides=training_overrides(a.method,a.phase,a.seed,root,run_id)
-    manifest.update(phase=a.phase, command_overrides=overrides, gpu_model=torch.cuda.get_device_name(0))
+    manifest.update(phase=a.phase, command_overrides=overrides, gpu_model=torch.cuda.get_device_name(0),
+                    environment={'python':sys.version.split()[0], 'torch':torch.__version__,
+                                 'cuda_runtime':torch.version.cuda, 'prefix':sys.prefix,
+                                 'specification':'conf/study/worker-5090-requirements.txt',
+                                 'constraints':'conf/study/worker-5090-constraints.txt'})
     env=os.environ.copy()
     env.update(DATASET_DIR=str(dataset),WANDB_MODE='offline',WANDB_DIR=str(folder),
                WANDB_CACHE_DIR=str(root/'caches/wandb'),HF_HOME=str(root/'caches/huggingface'),
                TORCH_HOME=str(root/'caches/torch'),TMPDIR=str(root/'caches/tmp'),
                PYTHONDONTWRITEBYTECODE='1',SDL_VIDEODRIVER='dummy',
+               TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD='1',
                WORLD_SIZE='1',RANK='0',LOCAL_RANK='0',MASTER_ADDR='127.0.0.1')
     (root/'caches/tmp').mkdir(parents=True,exist_ok=True)
     with socket.socket() as sock:

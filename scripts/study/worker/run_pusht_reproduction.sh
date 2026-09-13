@@ -9,7 +9,7 @@ DATA_VERSION=${5:?dataset version or verified inventory SHA required}
 set -euo pipefail
 ROOT=$1; SHA=$2; METHOD=$3; PHASE=$4; VERSION=$5
 cd "$ROOT/code/$SHA"
-PYTHON="$ROOT/envs/lpwm-$SHA/bin/python"
+PYTHON="$ROOT/envs/lpwm-5090/bin/python"
 # Correctness gate on worker; local process does not contact any other machine.
 export PYTHONDONTWRITEBYTECODE=1
 "$PYTHON" -c 'import torch, torchvision, einops'
