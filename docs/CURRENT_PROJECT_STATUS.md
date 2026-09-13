@@ -6,10 +6,23 @@
 - Worker: `autodl-jepa`, RTX5090, driver595.71.05, CUDA runtime12.8.
 - Immutable training/evaluation code SHA: `0f1720a0be0c73a98a16ce48936c052d7aaee3a6`.
 - Active full Gaussian run: `gaussian-s0-20260913T214253-97d19b52dc9f`.
-- Training: official2 epochs, batch64, all1,981,721 windows/epoch,61,930 total optimizer steps. Observed early throughput~3.7–4 steps/s; estimated4–5 training hours per method, excluding planning. Observed GPU use16,794MiB (~16.4GiB),77–81% utilization; final peak/averages pending.
+- Training: official2 epochs, batch64, all1,981,721 windows/epoch,61,930 total optimizer steps. Latest measured progress and ETA are recorded below; final peak VRAM and full-run utilization averages remain pending.
 - Controller monitor: tmux session `jepa-reproduction-monitor`; state `/mnt/research/jepa-worldmodel-study-storage/runs/reproduction-queue.json`.
 - Sequence enforced: Gaussian training -> official Gaussian planning -> verified checkpoint retention -> sparse training -> official sparse planning -> verified retention -> generated report. Stops on failures. No pixel training or large sweep.
 - Compact results sync back every monitoring cycle. Completed report will be `/mnt/research/jepa-worldmodel-study-storage/runs/UPSTREAM_REPRODUCTION_REPORT.md`; it does not exist until both evaluations complete.
+
+## Latest operator check — 2026-09-13 22:14:38 UTC
+
+- Monitor `jepa-reproduction-monitor` is alive; queue remains Gaussian training, run `gaussian-s0-20260913T214253-97d19b52dc9f`. No jobs restarted or duplicated; immutable experiment SHA unchanged.
+- Epoch1:7,209/30,965 batches; overall7,209/61,930 steps (11.64%). Progress advanced from6,672 at22:12:15 UTC to7,209 at22:14:38 UTC.
+- Recent measured throughput:200 steps (7,009→7,209) in53 seconds =3.774 steps/s. Log grew530,245→571,057 bytes and was0.23 seconds old at the second check.
+- Health: no logged traceback, OOM, NaN/Inf or disk-space failure matched the log scan. This is a log-level check, not a guarantee of numerical correctness. Recent60 GPU samples averaged66.1% utilization (range18–100%); observed memory16,794/32,607MiB with one training compute process. Utilization fluctuates but progress is steady.
+- Storage: worker data disk38G free (25% used); worker root30G available,53M used. Controller research mount verified,24G available; controller root9.5G available. No obvious storage pressure.
+- Gaussian training remaining: approximately4h02m at measured throughput, projected finish **2026-09-14 02:16 UTC**, excluding validation/checkpoint overhead. Epoch1 alone has approximately1h45m remaining.
+- Gaussian official planning: **pending; duration unknown**. Sparse training: approximately4h34m, extrapolated from Gaussian throughput, not measured sparse full-run throughput. Sparse planning: **pending; duration unknown**.
+- Remaining sequential training subtotal: approximately8h35m, **plus both unknown planning durations and validation/checkpoint/retention overhead**. This is not a measured whole-queue completion ETA.
+- Automatic next step: successful Gaussian training → official50-episode Gaussian planning → hash-verified checkpoint retention → sparse training/planning/retention → final report. Monitor owns waiting and stops on failure. Pixel experiments remain unlaunched.
+- Added project-local `AGENTS.md` operating rule. Interactive checks update this handoff and exit; future sessions should refresh these timestamped observations rather than reuse this ETA.
 
 ## Git / completed setup
 Canonical checkout `/mnt/research/robotics/jepa-worldmodel-study` on mounted research disk; durable artifacts in sibling project storage. Initial upstream/main and local main match `bdd812d9432cccda8c350086006401b436f91982`, annotated tag `baseline/upstream-initial`.
@@ -52,6 +65,6 @@ Updated automatically from the controller monitor; no scientific result is infer
   "status": "running",
   "active_run": "gaussian-s0-20260913T214253-97d19b52dc9f",
   "stage": "training",
-  "updated_at": 1789336238.851039
+  "updated_at": 1789337826.861905
 }
 ```
