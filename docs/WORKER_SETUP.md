@@ -1,30 +1,36 @@
-# Worker setup (prepared, not executed)
+# Confirmed RTX 5090 worker setup
 
-No JEPA alias is configured by this project. Every SSH entry point requires an explicitly confirmed alias. Existing root SSH config is reused read-only with StrictHostKeyChecking=yes and UpdateHostKeys=no. Unknown host keys fail rather than modifying ~/.ssh.
+User authorized `autodl-jepa`. Every SSH script still requires an explicit alias. SSH config is reused read-only with StrictHostKeyChecking=yes and UpdateHostKeys=no; neither host keys nor aliases are rewritten.
 
-## Environment recommendation
-Use a fresh prefix on the worker data volume, never system Python or another project's env. Upstream environment.yaml specifies Python 3.9, conda-forge ffmpeg 4.3.2 and pinned pip dependencies including torch 2.3.0, torchvision 0.18.0, CUDA-12.1 runtime packages, hydra-core 1.2.0, accelerate 0.26.1, decord 0.6.0, pygame 2.5.2 and pymunk 6.8.0. No uv workflow is supplied. OGBench has a separate lpwm_swm/environment.yaml and should stay separate.
+## Validated environment
+- Worker data disk: `/root/autodl-tmp`, xfs, 50G; root overlay 30G.
+- Driver 595.71.05; RTX5090, 32607 MiB; existing torch2.8.0+cu128 / torchvision0.23.0+cu128, CUDA runtime12.8. Do not downgrade to upstream torch2.3/cu121 on this GPU.
+- Dedicated `/root/autodl-tmp/robotics/jepa-worldmodel-study/envs/lpwm-5090` is a Python3.12.3 venv with `--system-site-packages`, created using `/root/miniconda3/bin/python`. It reads base torch/CUDA packages without modifying base; project additions and NumPy override live on the data disk. Environment size after install: 664M. Root remained53M.
+- Targeted requirements and constraints: `conf/study/worker-5090-{requirements,constraints}.txt`. Setup downloads from Tsinghua; bounded connectivity checks found Tsinghua/Aliyun/PyPI/OSF/PyTorch endpoints reachable. No CUDA package was downloaded/replaced. All pip caches and build temp files are on the data disk.
+- pip check passed; train.py/plan.py import; PushT reset returns state(7), image(224,224,3); CUDA SDPA forward/backward passed. Worker tests:21 passed in3.82s.
 
-Keep Python 3.9 for initial reproduction; networkx 3.2.1 supports it (https://pypi.org/project/networkx/3.2.1/). NumPy is unpinned upstream; add numpy==1.26.4 to a GENERATED worker copy to avoid an uncontrolled NumPy-2 transition with the older compiled stack. This is a disclosed compatibility constraint, not an upstream lock. Keep original environment.yaml untouched. Verify solver output, pip check, imports and dataset decoding before expensive work. Package wheels are not fully hash-locked yet.
+## Disclosed compatibility deviations
+Upstream's broad environment.yaml expects Python3.9, torch2.3.0, torchvision.18.0, hydra1.2.0 and many unrelated packages. For current Blackwell worker, preserve Python3.12.3 and installed torch2.8/cu128 read-only. Hydra1.3.2, W&B.17.9 and scikit-image.24 are compatible replacements for older upstream pins. NumPy is pinned locally to1.26.4 (upstream unpinned, base2.3.2). Main physics/data dependencies retain upstream pins. Matplotlib/Pillow inherit newer base versions. Old unused transformers/tokenizers and OGBench dependencies are not installed.
 
-PyTorch documents 2.3.0 with torchvision 0.18.0 and a CUDA-12.1 wheel option (https://pytorch.org/get-started/previous-versions/). A 4090 requires a working compatible NVIDIA driver; verify with the worker audit and CUDA allocation smoke. Do not install/change drivers. A failed old ffmpeg solve or import requires a reviewed minimal compatibility patch, not silent upgrades. Conda must already exist at /root/miniconda3/bin/conda; missing conda is an explicit bootstrap blocker.
+This is an explicitly tested compatibility environment, not an exact recreation of the paper's software stack. Preserve the installed package inventory with results. `TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD=1` restores historical torch.load semantics ONLY for the hash-verified official archive and self-generated checkpoints. Never use this with untrusted downloads. Driver capability13.2 is not the PyTorch runtime; actual runtime is12.8.
 
-## Exact deployment sequence once an alias is confirmed
-Run from canonical clean checkout; replace CONFIRMED_JEPA_ALIAS and VERIFIED_DATASET_VERSION first.
-
+## Deployment / run commands
 ```bash
-JEPA_ALIAS=CONFIRMED_JEPA_ALIAS
+JEPA_ALIAS=autodl-jepa
 SHA=$(git rev-parse HEAD)
 bash scripts/study/worker/audit_worker.sh "$JEPA_ALIAS"
 bash scripts/study/worker/sync_code_to_worker.sh "$JEPA_ALIAS"
+# Fresh worker only: refuses to overwrite existing envs/lpwm-5090.
 bash scripts/study/worker/setup_worker_env.sh "$JEPA_ALIAS" "$SHA"
-# Separately acquire/verify pusht_noise/train and pusht_noise/val on worker datasets/.
-bash scripts/study/worker/run_pusht_reproduction.sh "$JEPA_ALIAS" "$SHA" gaussian smoke VERIFIED_DATASET_VERSION
-# Inspect manifest/logs and wait for completion before next queue item.
+# Dataset acquisition runs on worker: python -m study.acquire_pusht
+bash scripts/study/worker/run_pusht_reproduction.sh "$JEPA_ALIAS" "$SHA" gaussian smoke 442f5dee246edf670964ed7bdecd248683cd6d00580fa0e4d458abb53f92da08
 ```
+Use full SHA snapshot directories `code/<SHA>`. Each snapshot contains hashes and has no .git, credentials or untracked files. Repeat deployment of a SHA refuses overwrite. Environments are independent of code SHA and must not be modified during the paired reproductions.
 
-setup_worker_env.sh executes `conda env create --prefix <worker-root>/envs/lpwm-<SHA> --file <worker-root>/envs/environment-<SHA>.yaml`, then pip check and a CUDA/import check. Caches, temp builds and conda packages are redirected to the worker data volume. It refuses an existing prefix.
+After a completed reproduction training run, invoke in that SAME worker snapshot:
+```bash
+/root/autodl-tmp/robotics/jepa-worldmodel-study/envs/lpwm-5090/bin/python -m study.plan_official RUN_ID
+```
+Run the next queue item only after reviewing the preceding manifest. The official evaluator retains 50 episodes, seed99, goal/rollout/prefix5, CEM300/30/30 and max10 replans. It is not the common controlled evaluator. Model-only latency is not currently separated from simulator/video overhead; measured evaluation wall time is explicitly labeled end-to-end.
 
-Code is exported from HEAD, hashed and uploaded to code/<SHA>, with no .git, credentials or untracked files. A second deployment of the same SHA refuses to overwrite; inspect incomplete deployments explicitly. The local small staging snapshot is retained under controller storage/runs/deploy.*. Result retrieval never deletes destination files. Checkpoints are intentionally not retrieved by the compact script; select a completed checkpoint explicitly, compare SHA-256 and store under controller storage/checkpoints. Do not destroy the worker before verified recovery state is retained.
-
-The common physical evaluator has metric/probe contracts but no finished simulator/checkpoint adapter yet. Official reproduction planning is separate; it retains upstream coupled horizons and simulator-informed CEM stopping. No result should be labeled a controlled three-arm planning comparison until those adapters are implemented and tested.
+Compact retrieval uses sync_compact_results_back.sh ALIAS RUN_ID; never --delete. Checkpoints remain separate and must be selected and SHA-verified before retention. No automatic checkpoint purge. Instance-local data remain at risk until copied to controller or independent durable storage.

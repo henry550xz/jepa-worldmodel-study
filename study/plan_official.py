@@ -26,7 +26,9 @@ def main():
     out.mkdir(exist_ok=False)
     env=os.environ.copy(); env.update(DATASET_DIR=str(root/'datasets'),WANDB_MODE='offline',
         WANDB_DIR=str(folder),SDL_VIDEODRIVER='dummy',PYTHONDONTWRITEBYTECODE='1',
-        TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD='1',TORCH_HOME=str(root/'caches/torch'))
+        TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD='1',TORCH_HOME=str(root/'caches/torch'),
+        TMPDIR=str(root/'caches/tmp'),MPLCONFIGDIR=str(root/'caches/matplotlib'),
+        XDG_CACHE_HOME=str(root/'caches/xdg'),WANDB_CACHE_DIR=str(root/'caches/wandb'))
     args=['--config-name','plan_lewm.yaml',f'ckpt_base_path={root}/checkpoints',
           f'model_name={a.run_id}','model_epoch=latest','n_evals=50','planner.max_iter=10','seed=99',
           f'hydra.run.dir={out}']

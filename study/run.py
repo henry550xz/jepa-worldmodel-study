@@ -80,6 +80,8 @@ def main():
     env.update(DATASET_DIR=str(dataset),WANDB_MODE='offline',WANDB_DIR=str(folder),
                WANDB_CACHE_DIR=str(root/'caches/wandb'),HF_HOME=str(root/'caches/huggingface'),
                TORCH_HOME=str(root/'caches/torch'),TMPDIR=str(root/'caches/tmp'),
+               MPLCONFIGDIR=str(root/'caches/matplotlib'),XDG_CACHE_HOME=str(root/'caches/xdg'),
+               TRITON_CACHE_DIR=str(root/'caches/triton'),
                PYTHONDONTWRITEBYTECODE='1',SDL_VIDEODRIVER='dummy',
                TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD='1',
                WORLD_SIZE='1',RANK='0',LOCAL_RANK='0',MASTER_ADDR='127.0.0.1')
