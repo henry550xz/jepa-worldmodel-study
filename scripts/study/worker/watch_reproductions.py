@@ -30,6 +30,10 @@ def manifest(alias, run_id):
 
 def record(path, state):
     temp=path.with_suffix('.tmp');temp.write_text(json.dumps(state,indent=2)+'\n');temp.replace(path)
+    status=REPO/'docs/CURRENT_PROJECT_STATUS.md'
+    marker='\n## Live reproduction monitor\n'
+    original=status.read_text().split(marker)[0]
+    status.write_text(original+marker+'\nUpdated automatically from the controller monitor; no scientific result is inferred from an active run.\n\n```json\n'+json.dumps(state,indent=2)+'\n```\n')
 
 
 def sync(alias,run_id):
@@ -114,7 +118,11 @@ def main():
         if m['evaluation_settings']['status']=='not_run':launch_plan(a.alias,a.sha,sparse)
         m=wait(a.alias,sparse,'evaluation',state,path)
         retain_checkpoint(a.alias,sparse,m)
-        state.update(status='complete',stage='complete',updated_at=time.time())
+        import sys
+        sys.path.insert(0,str(REPO))
+        from study.summarize_reproductions import summarize
+        report=summarize(STORE,[a.gaussian_run,sparse],remote(a.alias,'df -hT / /root/autodl-tmp'))
+        state.update(status='complete',stage='complete',report=str(report),updated_at=time.time())
     except BaseException as e:
         state.update(status='watcher_failed',error_type=type(e).__name__,error=str(e),updated_at=time.time())
         raise
