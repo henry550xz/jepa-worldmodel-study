@@ -24,3 +24,6 @@ Trusted upstream dataset/checkpoint loading uses TORCH_FORCE_NO_WEIGHTS_ONLY_LOA
 - Blockers: official 2.79GB PushT archive downloading with bounded parallel ranges; official SHA256 recorded in acquisition script. Extraction, dataset GPU smoke and full-batch VRAM still pending. No claims of JEPA advantage or upstream metric reproduction.
 
 - Validated environment/deployment code SHA for upcoming smokes: 3e279431fc0b2db7467ecb99783750c8ba741bc3. Later documentation commits do not change this immutable snapshot.
+
+## First smoke diagnostic
+Gaussian smoke gaussian-s0-20260913T213854-88274e66f0ca failed BEFORE model construction (0 GPU allocated bytes). Imported train.main made Hydra treat conf as an importable package; upstream conf/ has no __init__.py. Instrumentation now explicitly passes the absolute config path, preserving upstream config contents. No scientific training result was produced; failed manifest retained.

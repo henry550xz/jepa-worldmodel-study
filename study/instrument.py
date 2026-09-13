@@ -36,7 +36,7 @@ def main():
     train.Trainer.init_models = counted
     torch.cuda.reset_peak_memory_stats()
     start = time.perf_counter()
-    sys.argv = ['train.py'] + (a.overrides[1:] if a.overrides[:1] == ['--'] else a.overrides)
+    sys.argv = ['train.py', '--config-path', str(Path(train.__file__).resolve().parent/'conf')] + (a.overrides[1:] if a.overrides[:1] == ['--'] else a.overrides)
     try:
         train.main()
     finally:

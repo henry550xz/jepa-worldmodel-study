@@ -13,7 +13,7 @@ def main():
     import plan
     if not torch.cuda.is_available():raise RuntimeError('CUDA worker required')
     torch.cuda.reset_peak_memory_stats();start=time.perf_counter()
-    sys.argv=['plan.py']+(a.overrides[1:] if a.overrides[:1]==['--'] else a.overrides)
+    sys.argv=['plan.py','--config-path',str(Path(plan.__file__).resolve().parent/'conf')]+(a.overrides[1:] if a.overrides[:1]==['--'] else a.overrides)
     try:plan.main()
     finally:
         torch.cuda.synchronize()
