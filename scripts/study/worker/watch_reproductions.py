@@ -29,6 +29,7 @@ def manifest(alias, run_id):
 
 
 def record(path, state):
+    subprocess.run(['mountpoint','-q','/mnt/research'],check=True)
     temp=path.with_suffix('.tmp');temp.write_text(json.dumps(state,indent=2)+'\n');temp.replace(path)
     status=REPO/'docs/CURRENT_PROJECT_STATUS.md'
     marker='\n## Live reproduction monitor\n'
@@ -90,7 +91,7 @@ def main():
     path=STORE/'runs'/'reproduction-queue.json'
     if path.exists() and not a.resume:raise RuntimeError('queue record already exists; use --resume after inspection')
     state=json.loads(path.read_text()) if path.exists() else {'source_sha':a.sha,'alias':a.alias,'gaussian_run':a.gaussian_run,'status':'starting'}
-    if state['source_sha']!=a.sha or state['gaussian_run']!=a.gaussian_run:raise ValueError('resume identity mismatch')
+    if state['source_sha']!=a.sha or state['gaussian_run']!=a.gaussian_run or state['alias']!=a.alias:raise ValueError('resume identity mismatch')
     if state['status']=='complete':return
     record(path,state)
     try:
@@ -104,13 +105,16 @@ def main():
         command=(f'cd {ROOT}/code/{a.sha} && nohup {ROOT}/envs/lpwm-5090/bin/python -m study.run '
             f'--method sparse --phase reproduction --dataset-version {m["dataset_version"]} '
             f'> {ROOT}/runs/sparse-reproduction-launch.log 2>&1 < /dev/null &')
-        if not state.get('sparse_run'):remote(a.alias,command)
-        sparse=state.get('sparse_run')
-        for _ in range(30):
+        def existing_sparse():
             payload=remote(a.alias,f"/root/miniconda3/bin/python -c \"import pathlib,json; print(json.dumps([json.loads(p.read_text()) for p in pathlib.Path('{ROOT}/runs').glob('sparse-*/manifest.json')]))\"")
             candidates=[x for x in json.loads(payload) if x['phase']=='reproduction' and x['git_sha']==a.sha]
             if len(candidates)>1:raise RuntimeError('ambiguous sparse reproduction runs')
-            if candidates:sparse=candidates[0]['run_id'];break
+            return candidates[0]['run_id'] if candidates else None
+        sparse=state.get('sparse_run') or existing_sparse()
+        if sparse is None:remote(a.alias,command)
+        for _ in range(30):
+            sparse=sparse or existing_sparse()
+            if sparse:break
             time.sleep(3)
         if sparse is None:raise RuntimeError('sparse run failed to start')
         state['sparse_run']=sparse
