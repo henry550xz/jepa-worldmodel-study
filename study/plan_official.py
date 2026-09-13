@@ -18,7 +18,8 @@ def main():
         raise ValueError('invalid run ID')
     root=worker_root_checked(a.worker_root); folder=root/'runs'/a.run_id
     m=json.loads((folder/'manifest.json').read_text())
-    info=provenance(Path(__file__).resolve().parents[1])
+    repo=Path(__file__).resolve().parents[1]
+    info=provenance(repo)
     if info['git_sha']!=m['git_sha'] or m['status']!='training_complete' or m['method']=='pixel':
         raise ValueError('require same committed code, completed JEPA run')
     out=folder/'planning'
@@ -33,9 +34,9 @@ def main():
     start=time.perf_counter()
     try:
         with (out/'resolved-config.yaml').open('w') as log:
-            subprocess.run([sys.executable,'plan.py',*args,'--cfg','job','--resolve'],env=env,stdout=log,stderr=subprocess.STDOUT,check=True)
+            subprocess.run([sys.executable,'plan.py',*args,'--cfg','job','--resolve'],cwd=repo,env=env,stdout=log,stderr=subprocess.STDOUT,check=True)
         with (out/'plan.log').open('w') as log:
-            result=subprocess.run([sys.executable,'plan.py',*args],env=env,stdout=log,stderr=subprocess.STDOUT)
+            result=subprocess.run([sys.executable,'plan.py',*args],cwd=repo,env=env,stdout=log,stderr=subprocess.STDOUT)
         m['evaluation_settings']['status']='complete' if result.returncode==0 else 'failed'
         # Upstream emits planning logs; do not invent a standardized metrics file.
         m['metrics_path']=str(out)

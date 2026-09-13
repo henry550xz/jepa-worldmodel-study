@@ -10,8 +10,11 @@ set -euo pipefail
 ROOT=$1; SHA=$2; METHOD=$3; PHASE=$4; VERSION=$5
 cd "$ROOT/code/$SHA"
 PYTHON="$ROOT/envs/lpwm-$SHA/bin/python"
-# This entry point waits for completion. For long jobs, invoke it in controller tmux;
-# worker run state/manifest still survives a terminal disconnect via nohup below.
+# Correctness gate on worker; local process does not contact any other machine.
+export PYTHONDONTWRITEBYTECODE=1
+"$PYTHON" -c 'import torch, torchvision, einops'
+"$PYTHON" -m pytest -q -p no:cacheprovider tests/study --basetemp="$ROOT/runs/checks-$METHOD-$$"
+# Launch detached; inspect the resulting manifest before moving to the next run.
 LOG="$ROOT/runs/launch-$METHOD-$(date -u +%Y%m%dT%H%M%S)-$$.log"
 nohup "$PYTHON" -m study.run --method "$METHOD" --phase "$PHASE" --worker-root "$ROOT" --dataset-version "$VERSION" >"$LOG" 2>&1 < /dev/null &
 printf 'PID=%s launch_log=%s\n' "$!" "$LOG"

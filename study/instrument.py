@@ -24,6 +24,8 @@ def main():
             self.dataloaders = {key: list(itertools.islice(loader, a.smoke_batches))
                                 for key, loader in self.dataloaders.items()}
         train.Trainer.__init__ = bounded
+        # Bound smoke validation too; official open-loop diagnostics can be expensive.
+        train.Trainer.openloop_rollout = lambda *args, **kwargs: {}
     counts = {}
     original_models = train.Trainer.init_models
     def counted(self):

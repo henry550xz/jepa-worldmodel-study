@@ -25,7 +25,8 @@ def export(repo, destination):
         if any(x in ('.git','.ssh','.config') or x.startswith('.env') for x in parts) or name.endswith(('.pem','.key')):
             raise ValueError(f'credential-like tracked path refused: {name}')
         content = subprocess.check_output(['git','-C',str(repo),'cat-file','blob',sha])
-        if b'PRIVATE KEY-----' in content:
+        if any((b'-----BEGIN '+kind+b'PRIVATE KEY-----') in content
+               for kind in (b'', b'OPENSSH ', b'RSA ', b'EC ', b'DSA ')):
             raise ValueError(f'private key marker refused: {name}')
         target = destination/name
         target.parent.mkdir(parents=True, exist_ok=True)
