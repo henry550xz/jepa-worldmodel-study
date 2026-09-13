@@ -27,3 +27,12 @@ Trusted upstream dataset/checkpoint loading uses TORCH_FORCE_NO_WEIGHTS_ONLY_LOA
 
 ## First smoke diagnostic
 Gaussian smoke gaussian-s0-20260913T213854-88274e66f0ca failed BEFORE model construction (0 GPU allocated bytes). Imported train.main made Hydra treat conf as an importable package; upstream conf/ has no __init__.py. Instrumentation now explicitly passes the absolute config path, preserving upstream config contents. No scientific training result was produced; failed manifest retained.
+
+## Dataset and smoke gates validated
+- Official PushT archive SHA256 matched. Download/extraction304.881s; archive2,785,304,515 bytes; uncompressed7,370,447,305 bytes. Dataset at worker datasets/pusht_noise.
+- Train18,685 episodes /1,981,721 windows; val21 episodes /2,115 windows. Item shapes match code map.
+- Gaussian smoke gaussian-s0-20260913T214005-c6af006c0be4: complete,10.424s process wall,1,828,423,680 peak allocated VRAM bytes,463,359,923-byte checkpoint.
+- Sparse smoke sparse-s0-20260913T214117-05d8b6b356e8: complete,10.354s process wall,1,829,343,744 peak allocated VRAM bytes,same checkpoint size.
+- Compact smoke logs/manifests synced to controller durable storage/runs. Source snapshot0f1720a0be0c73a98a16ce48936c052d7aaee3a6.
+- Full official Gaussian reproduction launched; not yet validated complete. Sparse full reproduction not yet launched. About61,930 optimizer steps per method; no silent subsampling.
+- Branches and baseline tag pushed to GitHub. Existing SSH deploy key cannot push this fork; origin retains SSH fetch and now uses HTTPS push through repo-local gh credential helper. No SSH configuration or secret material changed.
