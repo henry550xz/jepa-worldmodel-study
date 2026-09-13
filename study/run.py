@@ -92,9 +92,9 @@ def main():
     monitor=None
     try:
         # Hydra config resolution is recorded before launching any training.
-        with (folder/'resolved-config.yaml').open('w') as out:
+        with (folder/'resolved-config.yaml').open('w') as out, (folder/'config-resolution.log').open('w') as err:
             subprocess.run([sys.executable,'train.py',*overrides,'--cfg','job','--resolve'],
-                           cwd=repo,env=env,stdout=out,stderr=subprocess.STDOUT,check=True)
+                           cwd=repo,env=env,stdout=out,stderr=err,check=True)
         manifest['resolved_config']='resolved-config.yaml'
         manifest['training_start']=utcnow(); manifest['status']='running'
         write_manifest(folder,manifest)
@@ -113,6 +113,9 @@ def main():
         manifest['status']='training_complete' if result.returncode==0 else 'failed'
         if (folder/'telemetry.json').exists():
             manifest.update(json.loads((folder/'telemetry.json').read_text()))
+        actual_config=root/'checkpoints/outputs'/run_id/'hydra.yaml'
+        if actual_config.exists():
+            (folder/'resolved-config.yaml').write_text(actual_config.read_text())
         checkpoint=root/'checkpoints/outputs'/run_id/'checkpoints/model_latest.pth'
         if checkpoint.exists():
             manifest['checkpoint_path']=str(checkpoint)
