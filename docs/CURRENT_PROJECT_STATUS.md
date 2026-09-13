@@ -1,38 +1,57 @@
 # Current project status
 
-## Validated setup
-- Canonical checkout `/mnt/research/robotics/jepa-worldmodel-study` on verified mounted research disk.
-- GitHub fork henry550xz/jepa-worldmodel-study verified parent YilunKuang/lpworldmodel.
-- Baseline bdd812d9432cccda8c350086006401b436f91982; annotated baseline/upstream-initial; main unchanged.
-- Common foundation committed through 01f2126 on study/common-eval. Pixel implementation isolated on study/pixel-baseline, committed through 974d210 (before this status update). Exact current SHA: `git rev-parse HEAD`; each deployment/run records an immutable SHA.
-- Code map, protocol, metric/probe scaffold and committed-snapshot deployment scripts exist.
-- Controller checks: 10 passed, Torch module skipped (no controller PyTorch). No heavyweight controller installation.
+## Current execution
+**Full Gaussian upstream reproduction is RUNNING; full reproduction metrics are not available yet.**
 
-## Worker update
-User explicitly authorized autodl-jepa. Audit confirms RTX 5090, driver 595.71.05, base Python 3.12.3, torch 2.8.0+cu128, torchvision .23.0+cu128. Data disk is xfs /dev/md0, 50G at /root/autodl-tmp, empty at audit. Root overlay 30G; do not install there. Tsinghua, Aliyun, PyPI, OSF API and PyTorch wheel HEAD requests returned 200 within ~0.4–1.5 seconds.
+- Worker: `autodl-jepa`, RTX5090, driver595.71.05, CUDA runtime12.8.
+- Immutable training/evaluation code SHA: `0f1720a0be0c73a98a16ce48936c052d7aaee3a6`.
+- Active full Gaussian run: `gaussian-s0-20260913T214253-97d19b52dc9f`.
+- Training: official2 epochs, batch64, all1,981,721 windows/epoch,61,930 total optimizer steps. Observed early throughput~3.7–4 steps/s; estimated4–5 training hours per method, excluding planning. Observed GPU use16,794MiB (~16.4GiB),77–81% utilization; final peak/averages pending.
+- Controller monitor: tmux session `jepa-reproduction-monitor`; state `/mnt/research/jepa-worldmodel-study-storage/runs/reproduction-queue.json`.
+- Sequence enforced: Gaussian training -> official Gaussian planning -> verified checkpoint retention -> sparse training -> official sparse planning -> verified retention -> generated report. Stops on failures. No pixel training or large sweep.
+- Compact results sync back every monitoring cycle. Completed report will be `/mnt/research/jepa-worldmodel-study-storage/runs/UPSTREAM_REPRODUCTION_REPORT.md`; it does not exist until both evaluations complete.
 
-## Environment decision / deviations
-Do not downgrade the functioning Blackwell CUDA stack to upstream torch2.3/cu121. Create data-disk venv `envs/lpwm-5090` with read-only system-site-packages inheritance from base; pip writes only to venv. This deliberately uses Python3.12 instead of upstream3.9, after auditing the imported PushT path. Upgrade Hydra1.2->1.3.2, W&B .13.1->.17.9 and scikit-image .19.3->.24 for compatibility; override NumPy2.3.2 with1.26.4 locally. Torch/torchvision constrained to existing versions. Remaining targeted dependencies are pinned. Do not install the full export's unused old transformers/tokenizers stack.
+## Git / completed setup
+Canonical checkout `/mnt/research/robotics/jepa-worldmodel-study` on mounted research disk; durable artifacts in sibling project storage. Initial upstream/main and local main match `bdd812d9432cccda8c350086006401b436f91982`, annotated tag `baseline/upstream-initial`.
 
-Trusted upstream dataset/checkpoint loading uses TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD=1 for the PyTorch2.6+ default change; only verified official data and self-generated checkpoints may be loaded. Environment validated: pip check, train/plan imports, PushT reset, CUDA attention forward/backward all passed. Worker correctness suite: 21 passed in 3.82s. No reproduction result exists yet. Effective package inventory is in manifests/WORKER_ENVIRONMENT_5090.json. Base remains numpy2.3.2/torch2.8+cu128 unchanged; project venv uses numpy1.26.4.
+Current development branch `study/pixel-baseline`; current documentation/monitor HEAD is obtained with `git rev-parse HEAD` (it can be newer than immutable experiment SHA). Common foundation preserved on `study/common-eval` through01f2126. Small logical commits cover scaffold, source audit, common evaluator, deployment, pixel design/implementation and tests. Upstream scientific source files are unchanged.
 
-## Scientific status and gates
-- Dense/sparse reproduction: NOT RUN. Exact official cells documented; new runner records config/provenance/telemetry.
-- Pixel: implemented independently but NOT launched as a research experiment; CPU Torch gradient/causality/action/overfit gates passed on the worker. Pixel will not interfere with official upstream runs.
-- Evaluator: physical metrics/ranking and frozen probe infrastructure implemented; simulator/checkpoint adapters and frozen episode partitions not finished.
-- Next: isolated environment/import/CUDA smoke and official PushT acquisition; then Gaussian tiny smoke, sparse tiny smoke, official Gaussian training+planning, official sparse training+planning sequentially.
-- Blockers: official 2.79GB PushT archive downloading with bounded parallel ranges; official SHA256 recorded in acquisition script. Extraction, dataset GPU smoke and full-batch VRAM still pending. No claims of JEPA advantage or upstream metric reproduction.
+Origin fetch: git@github.com:henry550xz/jepa-worldmodel-study.git; origin push: https://github.com/henry550xz/jepa-worldmodel-study.git using repo-local gh credential helper. Upstream: https://github.com/YilunKuang/lpworldmodel.git. Existing SSH deploy key lacks fork push permission; HTTPS push succeeded without changing SSH configuration. Initial branches/tag backed up to GitHub; latest documentation commits are pushed periodically.
 
-- Validated environment/deployment code SHA for upcoming smokes: 3e279431fc0b2db7467ecb99783750c8ba741bc3. Later documentation commits do not change this immutable snapshot.
+## Validated environment and data
+Dedicated data-disk venv `envs/lpwm-5090` inherits base torch2.8.0+cu128 and torchvision.23.0+cu128 read-only, Python3.12.3. No base packages, drivers, system CUDA or bash startup files changed. Environment664M; root overlay remained53M used; worker data disk had38G available after setup/smokes and full-run start.
 
-## First smoke diagnostic
-Gaussian smoke gaussian-s0-20260913T213854-88274e66f0ca failed BEFORE model construction (0 GPU allocated bytes). Imported train.main made Hydra treat conf as an importable package; upstream conf/ has no __init__.py. Instrumentation now explicitly passes the absolute config path, preserving upstream config contents. No scientific training result was produced; failed manifest retained.
+Targeted compatibility changes from upstream Python3.9/torch2.3: Hydra1.3.2, W&B.17.9, scikit-image.24, local NumPy1.26.4 override. Effective inventory: manifests/WORKER_ENVIRONMENT_5090.json; exact requirements/constraints in conf/study. Trusted official data/self-generated checkpoints use TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD=1 for the newer PyTorch loading default. No unrelated old transformers/tokenizers packages installed.
 
-## Dataset and smoke gates validated
-- Official PushT archive SHA256 matched. Download/extraction304.881s; archive2,785,304,515 bytes; uncompressed7,370,447,305 bytes. Dataset at worker datasets/pusht_noise.
-- Train18,685 episodes /1,981,721 windows; val21 episodes /2,115 windows. Item shapes match code map.
-- Gaussian smoke gaussian-s0-20260913T214005-c6af006c0be4: complete,10.424s process wall,1,828,423,680 peak allocated VRAM bytes,463,359,923-byte checkpoint.
-- Sparse smoke sparse-s0-20260913T214117-05d8b6b356e8: complete,10.354s process wall,1,829,343,744 peak allocated VRAM bytes,same checkpoint size.
-- Compact smoke logs/manifests synced to controller durable storage/runs. Source snapshot0f1720a0be0c73a98a16ce48936c052d7aaee3a6.
-- Full official Gaussian reproduction launched; not yet validated complete. Sparse full reproduction not yet launched. About61,930 optimizer steps per method; no silent subsampling.
-- Branches and baseline tag pushed to GitHub. Existing SSH deploy key cannot push this fork; origin retains SSH fetch and now uses HTTPS push through repo-local gh credential helper. No SSH configuration or secret material changed.
+Tsinghua/Aliyun/PyPI/OSF/PyTorch connectivity tested before downloads. Official PushT archive SHA256 `442f5dee246edf670964ed7bdecd248683cd6d00580fa0e4d458abb53f92da08` verified. Acquisition/extraction304.881s; compressed2,785,304,515 bytes, uncompressed7,370,447,305. Worker path datasets/pusht_noise. Train18,685 episodes /2,336,736 raw frames; validation21 episodes /2,514 frames. Batch tensors match code map.
+
+## Completed gates
+- pip check; train.py/plan.py imports; PushT reset; CUDA SDPA forward/backward: passed.
+- Controller lightweight tests:10 passed, Torch skipped. Worker correctness tests:21 passed, including pixel loss gradients/causality/action influence/tiny overfit. These are synthetic plumbing checks, not research results.
+- Gaussian dataset smoke `gaussian-s0-20260913T214005-c6af006c0be4`: complete,10.424s process wall,1,828,423,680 peak allocated VRAM bytes.
+- Sparse dataset smoke `sparse-s0-20260913T214117-05d8b6b356e8`: complete,10.354s,1,829,343,744 peak bytes.
+- Both smoke latest checkpoints463,359,923 bytes; compact manifests/logs retained on controller.
+- Earlier Gaussian smoke failed before model construction due imported Hydra config-path resolution. Fixed in wrapper with absolute config path; failed manifest retained. No upstream model/config change.
+
+## Scientific readiness / blockers
+Pixel baseline is implemented independently, tested for plumbing, and not launched as a research experiment. Common physical metrics/ranking and frozen probes exist; checkpoint/simulator adapters and frozen episode partitions remain unfinished. Full Gaussian/sparse reproduction success, end-to-end planning runtime, final VRAM and checkpoint results are pending.
+
+Official CEM uses simulator-informed early stopping and couples goal/rollout/prefix; those semantics remain only for reproduction. Upstream checkpoint resume omits/reinitializes parts of state, so exact resumption is not established. Numeric agreement with paper cannot be claimed without an authoritative target for the selected cell. We are testing WHETHER and WHEN JEPA helps, not assuming it wins.
+
+Exact next action: continue active Gaussian run; upon successful completion run its official50-episode planning evaluation, then sparse under identical conditions.
+
+## Live reproduction monitor
+
+Updated automatically from the controller monitor; no scientific result is inferred from an active run.
+
+```json
+{
+  "source_sha": "0f1720a0be0c73a98a16ce48936c052d7aaee3a6",
+  "alias": "autodl-jepa",
+  "gaussian_run": "gaussian-s0-20260913T214253-97d19b52dc9f",
+  "status": "running",
+  "active_run": "gaussian-s0-20260913T214253-97d19b52dc9f",
+  "stage": "training",
+  "updated_at": 1789336238.851039
+}
+```
