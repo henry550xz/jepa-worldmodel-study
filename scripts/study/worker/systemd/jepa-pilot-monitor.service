@@ -8,7 +8,7 @@ StartLimitIntervalSec=0
 [Service]
 Type=simple
 WorkingDirectory=/mnt/research/robotics/jepa-worldmodel-study
-ExecStart=/usr/bin/python3 -u scripts/study/worker/watch_pilot.py autodl-jepa fade5b690451efd23d5e428bcf5013c0e32a8aec
+ExecStart=/usr/bin/python3 -u scripts/study/worker/watch_pilot.py autodl-jepa 40d8c7840a0a7e96933a42e10c60a926b272430e
 Restart=on-failure
 RestartSec=60
 RestartPreventExitStatus=78
