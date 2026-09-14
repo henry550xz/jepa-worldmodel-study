@@ -24,10 +24,12 @@ def install(train, telemetry, bounded_steps):
                 if not torch.isfinite(loss):raise RuntimeError('nonfinite matched loss')
                 if training:
                     self.accelerator.backward(loss)
-                    if i==0:
+                    if i in (0,2):
                         grads={n:sum(float(p.grad.abs().sum()) for p in getattr(self,n).parameters() if p.grad is not None)
                                for n in ['encoder','predictor','action_encoder']+(['decoder'] if self.cfg.has_decoder else [])}
-                        if any(not (v>0) for v in grads.values()):raise RuntimeError('zero module gradient')
+                        required=[v for k,v in grads.items() if k!='action_encoder' or i>=2]
+                        if any(not (v>0) for v in required):raise RuntimeError('zero module gradient')
+                        telemetry.setdefault('gradient_checks',{})[str(i)]=grads
                         telemetry['gradient_l1']=grads
                     for opt in opts:
                         if opt is not None:opt.step()
