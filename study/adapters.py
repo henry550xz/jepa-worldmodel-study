@@ -53,6 +53,7 @@ class CheckpointAdapter:
     def predict_states(self, history, actions):
         obs={k:v.to(self.device) for k,v in history['observations'].items()}
         past=history['actions'].to(self.device)
+        if isinstance(actions,np.ndarray):actions=np.ascontiguousarray(actions)
         actions=torch.as_tensor(actions,device=self.device,dtype=torch.float32)
         if past.shape[1]!=obs['visual'].shape[1]-1:
             raise ValueError('need exactly history length minus one grouped past actions')

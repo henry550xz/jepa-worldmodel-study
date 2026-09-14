@@ -1,5 +1,5 @@
 {
-  "version": "pusht-pilot-v1",
+  "version": "pusht-pilot-v2",
   "dataset_sha256": "442f5dee246edf670964ed7bdecd248683cd6d00580fa0e4d458abb53f92da08",
   "assignment": "SHA256(jepa-pilot-v1:split/index) sorted, reserved partitions first",
   "partitions": {
@@ -663,13 +663,11 @@
       "train/1416",
       "train/5688",
       "train/10955",
-      "train/16253",
       "train/9674",
       "train/5386",
       "train/7808",
       "train/1521",
       "train/8058",
-      "train/16208",
       "train/5876",
       "train/3623",
       "train/7140",
@@ -691,7 +689,6 @@
       "train/12385",
       "train/12170",
       "train/17101",
-      "train/16207",
       "train/6521",
       "train/9076",
       "train/2673",
@@ -700,7 +697,6 @@
       "train/8003",
       "train/11162",
       "train/15203",
-      "train/16204",
       "train/6844",
       "train/7779",
       "train/341",
@@ -18720,6 +18716,12 @@
       "val/18",
       "val/19",
       "val/20"
+    ],
+    "readiness_probe_test": [
+      "train/16253",
+      "train/16208",
+      "train/16207",
+      "train/16204"
     ]
   },
   "simulator_seeds": {
@@ -18792,5 +18794,6 @@
       930049
     ]
   },
-  "lengths_sha256": "1f4d054040bb43a7b998cbb2c9a3f8f5b823e2a7581bf09ff131b2525897e242"
+  "lengths_sha256": "1f4d054040bb43a7b998cbb2c9a3f8f5b823e2a7581bf09ff131b2525897e242",
+  "readiness_reservation": "Four preselected long-horizon smoke fixtures reserved from the original probe_test split; world/probe train and validation membership unchanged."
 }

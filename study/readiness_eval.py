@@ -63,7 +63,8 @@ def run(root,run_id):
         data=PushTDataset(data_path=str(root/'datasets/pusht_noise/train'),transform=default_transform())
         parts=read_partitions()['partitions'];feature_sets={};selection={}
         for part,count in [('probe_train',8),('probe_validation',4),('probe_test',4)]:
-            ids=[int(s.split('/')[1]) for s in parts[part]]
+            source_part='readiness_probe_test' if part=='probe_test' else part
+            ids=[int(s.split('/')[1]) for s in parts[source_part]]
             if part=='probe_test':ids=[i for i in ids if data.get_seq_length(i)>=171]
             ids=ids[:count];selection[part]=ids
             assert len(ids)==count
@@ -104,7 +105,9 @@ def run(root,run_id):
         history,_=history_from_replay(sim,np.empty((0,2)))
         costs=adapter.candidate_costs(history,bank['candidates'],bank['goal'])
         np.testing.assert_allclose(adapter.candidate_costs(history,bank['candidates'][::-1],bank['goal'])[::-1],costs,rtol=1e-4,atol=1e-5)
+        assert np.ptp(costs)>1e-10, 'action-insensitive candidate scores'
         report['fixed_candidate_ranking']=candidate_metrics(costs,bank['true_costs'])
+        report['predicted_cost_range']=float(np.ptp(costs))
         np.savez(out/'candidate-scores.npz',predicted=costs,true=bank['true_costs'])
         cfg=json.loads((repo/'conf/study/pilot.json').read_text())
         settings=PlanningSettings(**{k:v for k,v in cfg.items() if k in PlanningSettings.__dataclass_fields__})
@@ -117,7 +120,9 @@ def run(root,run_id):
             assert counts['candidate_evaluations']==64*5
             executed=np.concatenate([executed,chosen[:settings.execute_prefix].reshape(-1,2)])
             _,states=history_from_replay(sim,executed)
-            report['closed_loop'].append({'replan':replan,'model_planning_seconds':latency,'executed_simulator_steps':len(executed),
+            angle_error=float(np.abs(np.arctan2(np.sin(states[-1,4]-bank['goal'][4]),np.cos(states[-1,4]-bank['goal'][4]))))
+            success=bool(np.linalg.norm(states[-1,:4]-bank['goal'][:4])<20 and angle_error<np.pi/9)
+            report['closed_loop'].append({'success':success,'completion_steps':len(executed) if success else None,'final_state':states[-1,:5].tolist(),'selected_actions':chosen.tolist(),'replan':replan,'model_planning_seconds':latency,'executed_simulator_steps':len(executed),
                                          'physical_cost':float(physical_cost(states[-1,:5],bank['goal'])),**counts})
         assert all(not p.requires_grad for p in adapter.model.parameters())
         report.update(status='passed',peak_vram_bytes=torch.cuda.max_memory_allocated(),peak_reserved_vram_bytes=torch.cuda.max_memory_reserved())
