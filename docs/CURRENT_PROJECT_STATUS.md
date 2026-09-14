@@ -1,7 +1,7 @@
 # Current project status
 
 ## Current execution
-**Gaussian training and official planning completed successfully. Queue recovery is now supervised by systemd; reconciliation/checkpoint retention precedes sparse reproduction.**
+**Sparse official reproduction is training normally under systemd supervision. Gaussian training/planning and hash-verified controller checkpoint retention are complete.**
 
 - Worker: `autodl-jepa`, RTX5090, driver595.71.05, CUDA runtime12.8.
 - Immutable training/evaluation code SHA: `0f1720a0be0c73a98a16ce48936c052d7aaee3a6`.
@@ -10,6 +10,15 @@
 - Controller supervisor: systemd service `jepa-reproduction-queue.service`; state `/mnt/research/jepa-worldmodel-study-storage/runs/reproduction-queue.json`.
 - Sequence enforced: Gaussian training -> official Gaussian planning -> verified checkpoint retention -> sparse training -> official sparse planning -> verified retention -> generated report. Stops on failures. No pixel training or large sweep.
 - Compact results sync back every monitoring cycle. Completed report will be `/mnt/research/jepa-worldmodel-study-storage/runs/UPSTREAM_REPRODUCTION_REPORT.md`; it does not exist until both evaluations complete.
+
+## Latest operator check — 2026-09-14 15:23:34 UTC
+
+- Active run: `sparse-s0-20260914T125613-d870e47ee0cf`, official training, immutable source SHA unchanged. Systemd queue active/running, zero restarts; no duplicate jobs launched.
+- Epoch2:8,563/30,965; overall39,528/61,930 steps (63.83%). Recent200-step window took44s:4.545 steps/s. Log age0.13s; progress advancing, no traceback/OOM/NaN/Inf/no-space matches in training log.
+- GPU: one training compute process; observed92% utilization,31,070/32,607MiB memory (~95.3%). Recent logged samples83% and77%. VRAM is high but no OOM detected. Worker data disk36G free; root30G free/53M used.
+- Gaussian retained controller checkpoint SHA256 rechecked against saved worker hash: matches. Completed Gaussian success rate72% (36/50); no rerun.
+- Current sparse training ETA: approximately1h22m remaining, **16:46 UTC September14**, extrapolated from recent measured throughput, excluding validation/checkpoint overhead. Gaussian stages remaining0. Sparse official planning duration remains unmeasured; Gaussian24m45s is a reference only. Remaining queue:1h22m training + unknown sparse planning + retention/report overhead.
+- Automatic next step: sparse official planning → hash-verified retention → final reproduction report. Healthy service left alone; no pixel jobs. Earlier GPU-CSV inspection used the wrong column and was corrected; that diagnostic exception was local to this check, not an experiment failure.
 
 ## Supervisor recovery — 2026-09-14 12:53 UTC
 
@@ -58,7 +67,7 @@ Pixel baseline is implemented independently, tested for plumbing, and not launch
 
 Official CEM uses simulator-informed early stopping and couples goal/rollout/prefix; those semantics remain only for reproduction. Upstream checkpoint resume omits/reinitializes parts of state, so exact resumption is not established. Numeric agreement with paper cannot be claimed without an authoritative target for the selected cell. We are testing WHETHER and WHEN JEPA helps, not assuming it wins.
 
-Exact next action: systemd queue retains the Gaussian checkpoint and advances sparse; inspect live state and service health on continue. Repair recoverable failures rather than merely reporting them.
+Exact next action: let active sparse training finish; systemd advances its official planning, checkpoint retention and report. Inspect live state and repair recoverable failures on continue.
 
 ## Live reproduction monitor
 
@@ -70,8 +79,9 @@ Updated automatically from the controller monitor; no scientific result is infer
   "alias": "autodl-jepa",
   "gaussian_run": "gaussian-s0-20260913T214253-97d19b52dc9f",
   "status": "running",
-  "active_run": "gaussian-s0-20260913T214253-97d19b52dc9f",
-  "stage": "checkpoint_retention",
-  "updated_at": 1789390421.5015225
+  "active_run": "sparse-s0-20260914T125613-d870e47ee0cf",
+  "stage": "training",
+  "updated_at": 1789399387.2415724,
+  "sparse_run": "sparse-s0-20260914T125613-d870e47ee0cf"
 }
 ```
