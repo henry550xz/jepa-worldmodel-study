@@ -14,7 +14,7 @@ Whenever the user resumes and says **continue**:
 4. Do not launch duplicate jobs.
 5. If a stage finished, verify its artifacts/results and let the existing queue advance to the next planned stage.
 6. If it is running correctly, compute a fresh ETA from recent observed throughput. Separate measured training estimates from unknown planning time.
-7. Keep intermediate progress in queue state and session reports. Update `docs/CURRENT_PROJECT_STATUS.md` once the authorized reproduction goal is finished; do not rewrite or commit the handoff on every check.
+7. Keep intermediate progress in queue state and session reports. Update `docs/CURRENT_PROJECT_STATUS.md` once the authorized goal is finished; do not rewrite or commit the handoff on every check.
 8. Report what is running, progress, health, ETA and the automatic next step.
 9. If the remaining goal ETA is under five minutes, stay, check progress at intervals, verify completion/artifacts and deliver the final report. Otherwise exit while the persistent supervisor continues.
 

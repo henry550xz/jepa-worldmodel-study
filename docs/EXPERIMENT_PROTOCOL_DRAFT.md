@@ -34,4 +34,4 @@ Only committed snapshots run. Each run records unique ID, method, git SHA, upstr
 3. Official Gaussian PushT (training seed 0, evaluation seed 99).
 4. Official sparse PushT under identical conditions.
 5. Pixel seed-0 pilot after correctness gates; 6. Gaussian seed-0 pilot; 7. sparse seed-0 pilot.
-No results exist yet. No worker has been selected or contacted.
+The official Gaussian/sparse reproduction gate and the bounded three-arm pilot-readiness gate are complete. See PILOT_READINESS_REPORT.md for frozen partitions, matched configuration and validated adapters. Full research pilot training remains unauthorized.
