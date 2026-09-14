@@ -11,13 +11,18 @@ def main():
     p = argparse.ArgumentParser()
     p.add_argument('--telemetry', required=True)
     p.add_argument('--smoke-batches', type=int, default=0)
+    p.add_argument('--matched', action='store_true')
     p.add_argument('overrides', nargs=argparse.REMAINDER)
     a = p.parse_args()
     import torch
     import train
     if not torch.cuda.is_available():
         raise RuntimeError('GPU training is prohibited on the controller; CUDA worker required')
-    if a.smoke_batches:
+    matched_telemetry={}
+    if a.matched:
+        from study.matched_training import install
+        install(train,matched_telemetry,a.smoke_batches)
+    if a.smoke_batches and not a.matched:
         original = train.Trainer.__init__
         def bounded(self, cfg):
             original(self, cfg)
@@ -42,6 +47,7 @@ def main():
     finally:
         torch.cuda.synchronize()
         Path(a.telemetry).write_text(json.dumps({
+            **matched_telemetry,
             'peak_vram_bytes': torch.cuda.max_memory_allocated(),
             'peak_reserved_vram_bytes': torch.cuda.max_memory_reserved(),
             'gpu_model': torch.cuda.get_device_name(0),

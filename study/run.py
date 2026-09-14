@@ -11,7 +11,7 @@ from study.manifests import provenance, create_manifest, write_manifest, utcnow
 
 
 def training_overrides(method, phase, seed, root, run_id):
-    if method not in ('gaussian','sparse','pixel') or phase not in ('smoke','reproduction','pilot'):
+    if method not in ('gaussian','sparse','pixel') or phase not in ('smoke','readiness','reproduction','pilot'):
         raise ValueError('invalid method/phase')
     if method == 'pixel' and phase == 'reproduction':
         raise ValueError('upstream has no temporal pixel reproduction')
@@ -25,6 +25,10 @@ def training_overrides(method, phase, seed, root, run_id):
               f'training.batch_size={2 if smoke else 64}', f'env.num_workers={0 if smoke else 20}',
               f'ckpt_base_path={root}/checkpoints',
               f'hydra.run.dir={root}/checkpoints/outputs/{run_id}']
+    if phase in ('readiness','pilot'):
+        common += ['training.batch_size=32','env.num_workers=4',
+                   'training.epochs='+('1' if phase=='readiness' else '2'),
+                   'env.dataset._target_=study.partitions.load_partitioned']
     if smoke:
         common += ['env.dataset.n_rollout=2', 'training.num_reconstruct_samples=2']
     if method == 'pixel':
@@ -46,7 +50,7 @@ def worker_root_checked(value):
 def main():
     p=argparse.ArgumentParser()
     p.add_argument('--method', choices=['gaussian','sparse','pixel'], required=True)
-    p.add_argument('--phase', choices=['smoke','reproduction','pilot'], required=True)
+    p.add_argument('--phase', choices=['smoke','readiness','reproduction','pilot'], required=True)
     p.add_argument('--seed', type=int, default=0)
     p.add_argument('--worker-root', default='/root/autodl-tmp/robotics/jepa-worldmodel-study')
     p.add_argument('--dataset-version', required=True)
@@ -95,6 +99,13 @@ def main():
         with (folder/'resolved-config.yaml').open('w') as out, (folder/'config-resolution.log').open('w') as err:
             subprocess.run([sys.executable,'train.py',*overrides,'--cfg','job','--resolve'],
                            cwd=repo,env=env,stdout=out,stderr=err,check=True)
+        if a.phase in ('readiness','pilot'):
+            import hashlib
+            from study.partitions import PARTITIONS
+            manifest['partitions_sha256']=hashlib.sha256(PARTITIONS.read_bytes()).hexdigest()
+            manifest['matched_config']=json.loads((repo/'conf/study/pilot.json').read_text())
+            manifest['evaluation_settings']={'status':'not_run','protocol':'common_physical_probe'}
+            manifest['planning_settings']={k:v for k,v in manifest['matched_config'].items() if k in ('goal_horizon','rollout_horizon','execute_prefix','max_replans','cem_samples','cem_elites','cem_iterations','simulator_early_stop','frameskip')}
         manifest['resolved_config']='resolved-config.yaml'
         manifest['training_start']=utcnow(); manifest['status']='running'
         write_manifest(folder,manifest)
@@ -106,7 +117,8 @@ def main():
             except FileNotFoundError: pass
             with (folder/'train.log').open('w') as out:
                 result=subprocess.run([sys.executable,'-m','study.instrument','--telemetry',str(folder/'telemetry.json'),
-                    '--smoke-batches',str(2 if a.phase=='smoke' else 0),'--',*overrides],cwd=repo,env=env,
+                    '--smoke-batches',str(2 if a.phase=='smoke' else 8 if a.phase=='readiness' else 0),
+                    *(['--matched'] if a.phase in ('readiness','pilot') else []),'--',*overrides],cwd=repo,env=env,
                     stdout=out,stderr=subprocess.STDOUT)
         manifest['training_wall_seconds']=time.perf_counter()-start
         manifest['training_end']=utcnow(); manifest['exit_code']=result.returncode
