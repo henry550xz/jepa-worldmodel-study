@@ -1,0 +1,19 @@
+[Unit]
+Description=Observe and preserve JEPA seed-0 pilot evidence
+Wants=network-online.target
+After=network-online.target
+RequiresMountsFor=/mnt/research
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+WorkingDirectory=/mnt/research/robotics/jepa-worldmodel-study
+ExecStart=/usr/bin/python3 -u scripts/study/worker/watch_pilot.py autodl-jepa fade5b690451efd23d5e428bcf5013c0e32a8aec
+Restart=on-failure
+RestartSec=60
+RestartPreventExitStatus=78
+StandardOutput=append:/mnt/research/jepa-worldmodel-study-storage/runs/pilot-monitor.log
+StandardError=append:/mnt/research/jepa-worldmodel-study-storage/runs/pilot-monitor.log
+
+[Install]
+WantedBy=multi-user.target
