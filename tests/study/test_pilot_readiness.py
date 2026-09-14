@@ -58,3 +58,26 @@ def test_probe_ignores_unidentifiable_constant_training_features():
     a=probe(torch.tensor([[2.,0.]]));b=probe(torch.tensor([[2.,1000000.]]))
     torch.testing.assert_close(a,b)
     assert probe.x_active.tolist()==[1.,0.]
+
+
+def test_unbounded_matched_loop_performs_updates(monkeypatch):
+    import pytest,types
+    torch=pytest.importorskip('torch')
+    from study.matched_training import install
+    monkeypatch.setattr(torch.cuda,'synchronize',lambda:None)
+    class Model(torch.nn.Module):
+        def __init__(self):super().__init__();self.w=torch.nn.Parameter(torch.tensor(1.))
+        def forward(self,obs,act):
+            loss=(self.w-3)**2
+            return None,None,None,loss,{'loss':loss}
+    class Trainer:pass
+    train=types.SimpleNamespace(Trainer=Trainer);stats={};install(train,stats,0)
+    t=Trainer();t.model=Model();t.encoder=t.predictor=t.action_encoder=t.model
+    t.encoder_optimizer=torch.optim.SGD(t.model.parameters(),lr=.1)
+    t.predictor_optimizer=t.action_encoder_optimizer=t.decoder_optimizer=None
+    t.accelerator=types.SimpleNamespace(backward=lambda loss:loss.backward())
+    t.cfg=types.SimpleNamespace(has_decoder=False);t.epoch=1;t.logs_update=lambda x:None
+    t.dataloaders={'train':[(None,torch.zeros(2,1),None)]*4,'valid':[(None,torch.zeros(2,1),None)]*3}
+    t.train();t.val()
+    assert len(stats['train_losses'])==4 and len(stats['validation_losses'])==3
+    assert stats['train_losses'][-1]<stats['train_losses'][0]
