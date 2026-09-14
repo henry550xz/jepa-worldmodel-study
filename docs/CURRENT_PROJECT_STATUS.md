@@ -1,28 +1,26 @@
 # Current project status
 
 ## Current execution
-**Full Gaussian upstream reproduction is RUNNING; full reproduction metrics are not available yet.**
+**Gaussian training and official planning completed successfully. The controller monitor FAILED during the planning launch; the sequential queue is halted before checkpoint retention and sparse reproduction.**
 
 - Worker: `autodl-jepa`, RTX5090, driver595.71.05, CUDA runtime12.8.
 - Immutable training/evaluation code SHA: `0f1720a0be0c73a98a16ce48936c052d7aaee3a6`.
-- Active full Gaussian run: `gaussian-s0-20260913T214253-97d19b52dc9f`.
+- Completed full Gaussian run: `gaussian-s0-20260913T214253-97d19b52dc9f`.
 - Training: official2 epochs, batch64, all1,981,721 windows/epoch,61,930 total optimizer steps. Latest measured progress and ETA are recorded below; final peak VRAM and full-run utilization averages remain pending.
 - Controller monitor: tmux session `jepa-reproduction-monitor`; state `/mnt/research/jepa-worldmodel-study-storage/runs/reproduction-queue.json`.
 - Sequence enforced: Gaussian training -> official Gaussian planning -> verified checkpoint retention -> sparse training -> official sparse planning -> verified retention -> generated report. Stops on failures. No pixel training or large sweep.
 - Compact results sync back every monitoring cycle. Completed report will be `/mnt/research/jepa-worldmodel-study-storage/runs/UPSTREAM_REPRODUCTION_REPORT.md`; it does not exist until both evaluations complete.
 
-## Latest operator check — 2026-09-13 22:14:38 UTC
+## Latest operator check — 2026-09-14 12:46 UTC
 
-- Monitor `jepa-reproduction-monitor` is alive; queue remains Gaussian training, run `gaussian-s0-20260913T214253-97d19b52dc9f`. No jobs restarted or duplicated; immutable experiment SHA unchanged.
-- Epoch1:7,209/30,965 batches; overall7,209/61,930 steps (11.64%). Progress advanced from6,672 at22:12:15 UTC to7,209 at22:14:38 UTC.
-- Recent measured throughput:200 steps (7,009→7,209) in53 seconds =3.774 steps/s. Log grew530,245→571,057 bytes and was0.23 seconds old at the second check.
-- Health: no logged traceback, OOM, NaN/Inf or disk-space failure matched the log scan. This is a log-level check, not a guarantee of numerical correctness. Recent60 GPU samples averaged66.1% utilization (range18–100%); observed memory16,794/32,607MiB with one training compute process. Utilization fluctuates but progress is steady.
-- Storage: worker data disk38G free (25% used); worker root30G available,53M used. Controller research mount verified,24G available; controller root9.5G available. No obvious storage pressure.
-- Gaussian training remaining: approximately4h02m at measured throughput, projected finish **2026-09-14 02:16 UTC**, excluding validation/checkpoint overhead. Epoch1 alone has approximately1h45m remaining.
-- Gaussian official planning: **pending; duration unknown**. Sparse training: approximately4h34m, extrapolated from Gaussian throughput, not measured sparse full-run throughput. Sparse planning: **pending; duration unknown**.
-- Remaining sequential training subtotal: approximately8h35m, **plus both unknown planning durations and validation/checkpoint/retention overhead**. This is not a measured whole-queue completion ETA.
-- Automatic next step: successful Gaussian training → official50-episode Gaussian planning → hash-verified checkpoint retention → sparse training/planning/retention → final report. Monitor owns waiting and stops on failure. Pixel experiments remain unlaunched.
-- Added project-local `AGENTS.md` operating rule. Interactive checks update this handoff and exit; future sessions should refresh these timestamped observations rather than reuse this ETA.
+- No active JEPA job. Controller tmux monitor is absent; queue records `watcher_failed` / `TimeoutExpired`. Its `stage=training` is stale and does not reflect completed worker evaluation.
+- Gaussian run `gaussian-s0-20260913T214253-97d19b52dc9f`: training exit0, completed02:16:14 UTC; official50-episode planning exit0, completed02:42:00 UTC. Final success rate0.72 (36/50); upstream mean_state_dist197.0362. These results establish successful execution, not paper-level numerical agreement.
+- Measured training wall time16,397.99s (4h33m18s),61,930 steps; whole-run effective throughput3.777 steps/s. Training peak allocated VRAM30,992,848,384 bytes (~28.86GiB). Planning wrapper wall time1,484.62s (24m45s), instrumented process1,475.55s; peak allocated6,178,473,472 bytes (~5.75GiB).
+- Worker GPU idle:0% utilization,2MiB used; no Python processes listed. Worker data disk37G free, root30G free/53M used. Gaussian latest checkpoint exists,463,190,601 bytes. Compact manifests/logs/configs/metrics retrieved to controller project storage; selected checkpoint hash-verified retention remains pending. Preserve worker storage.
+- Failure diagnosis: controller SSH launch timed out after45s at approximately02:17:58 UTC. The command backgrounds the entire `cd ... && nohup ...` list; the background shell can retain SSH output descriptors despite the inner command redirections. This is the likely launch timeout cause. Worker planning nevertheless ran to successful completion. No failed scientific stage is indicated; orchestration failed and did not recover.
+- Only sparse smoke exists; full sparse reproduction has not launched. No duplicate jobs, retries, pixel experiments or scientific queue advancement performed during this check. Logs/artifacts preserved.
+- ETA: no running-stage ETA while queue is halted. Gaussian training/planning remaining0. After recovery, sparse training is estimated4h33m from measured Gaussian full-run time; sparse planning remains unmeasured (Gaussian's24m45s is only a reference). Total completion time remains unknown until recovery and sparse execution.
+- Next action: correct persistent launch detachment in the controller watcher, verify resume logic against completed Gaussian manifests, then explicitly resume the existing queue without rerunning Gaussian. Resume should retain/hash-check Gaussian checkpoint before launching sparse. Per operator failure workflow, this session diagnoses, records, reports and exits; no automatic next stage is currently possible.
 
 ## Git / completed setup
 Canonical checkout `/mnt/research/robotics/jepa-worldmodel-study` on mounted research disk; durable artifacts in sibling project storage. Initial upstream/main and local main match `bdd812d9432cccda8c350086006401b436f91982`, annotated tag `baseline/upstream-initial`.
@@ -47,11 +45,11 @@ Tsinghua/Aliyun/PyPI/OSF/PyTorch connectivity tested before downloads. Official 
 - Earlier Gaussian smoke failed before model construction due imported Hydra config-path resolution. Fixed in wrapper with absolute config path; failed manifest retained. No upstream model/config change.
 
 ## Scientific readiness / blockers
-Pixel baseline is implemented independently, tested for plumbing, and not launched as a research experiment. Common physical metrics/ranking and frozen probes exist; checkpoint/simulator adapters and frozen episode partitions remain unfinished. Full Gaussian/sparse reproduction success, end-to-end planning runtime, final VRAM and checkpoint results are pending.
+Pixel baseline is implemented independently, tested for plumbing, and not launched as a research experiment. Common physical metrics/ranking and frozen probes exist; checkpoint/simulator adapters and frozen episode partitions remain unfinished. Gaussian execution and metrics are validated above; sparse full reproduction and the final comparison remain pending.
 
 Official CEM uses simulator-informed early stopping and couples goal/rollout/prefix; those semantics remain only for reproduction. Upstream checkpoint resume omits/reinitializes parts of state, so exact resumption is not established. Numeric agreement with paper cannot be claimed without an authoritative target for the selected cell. We are testing WHETHER and WHEN JEPA helps, not assuming it wins.
 
-Exact next action: continue active Gaussian run; upon successful completion run its official50-episode planning evaluation, then sparse under identical conditions.
+Exact next action: repair controller monitor launch detachment and resume the existing queue after checking completed Gaussian evidence; retain its checkpoint, then run sparse under identical conditions.
 
 ## Live reproduction monitor
 
@@ -62,9 +60,11 @@ Updated automatically from the controller monitor; no scientific result is infer
   "source_sha": "0f1720a0be0c73a98a16ce48936c052d7aaee3a6",
   "alias": "autodl-jepa",
   "gaussian_run": "gaussian-s0-20260913T214253-97d19b52dc9f",
-  "status": "running",
+  "status": "watcher_failed",
   "active_run": "gaussian-s0-20260913T214253-97d19b52dc9f",
   "stage": "training",
-  "updated_at": 1789337826.861905
+  "updated_at": 1789352278.4697206,
+  "error_type": "TimeoutExpired",
+  "error": "Command '['ssh', '-o', 'BatchMode=yes', '-o', 'StrictHostKeyChecking=yes', '-o', 'UpdateHostKeys=no', '-o', 'ConnectTimeout=20', '-o', 'ServerAliveInterval=30', '-o', 'ServerAliveCountMax=4', 'autodl-jepa', 'cd /root/autodl-tmp/robotics/jepa-worldmodel-study/code/0f1720a0be0c73a98a16ce48936c052d7aaee3a6 && nohup /root/autodl-tmp/robotics/jepa-worldmodel-study/envs/lpwm-5090/bin/python -m study.plan_official gaussian-s0-20260913T214253-97d19b52dc9f > /root/autodl-tmp/robotics/jepa-worldmodel-study/runs/gaussian-s0-20260913T214253-97d19b52dc9f/planning-launch.log 2>&1 < /dev/null &']' timed out after 45 seconds"
 }
 ```
