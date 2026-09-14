@@ -24,11 +24,11 @@ If infrastructure fails: preserve evidence, diagnose, repair and safely resume t
 
 ## Current infrastructure and boundaries
 
-- Supervisor: controller systemd service `jepa-reproduction-queue.service`; no tmux dependency. Automatic infrastructure retries must be idempotent; scientific failures stop for diagnosis.
-- Queue state: `/mnt/research/jepa-worldmodel-study-storage/runs/reproduction-queue.json`.
+- Active pilot observer: controller systemd `jepa-pilot-monitor.service`; detached worker `study.concurrent_pilot` owns execution. The reproduction service is historical/completed. No tmux dependency; infrastructure retries must be idempotent, scientific failures stop for diagnosis.
+- Active pilot state: `/mnt/research/jepa-worldmodel-study-storage/runs/pilot-queue.json`; worker `runs/three-arm-pilot-queue/queue.json`. Historical reproduction state: `runs/reproduction-queue.json`.
 - Confirmed worker: `autodl-jepa`; workspace `/root/autodl-tmp/robotics/jepa-worldmodel-study/`.
 - Read the live queue for the active run and immutable experiment SHA; never assume an old run ID is still active.
-- Planned queue: Gaussian training → official planning → verified checkpoint retention → sparse training → official planning → verified retention → final reproduction report.
+- Authorized active pilot: Pixel/Gaussian/Sparse seed-0 training concurrently, then common evaluation sequentially Pixel → Gaussian → Sparse. Frozen scientific protocol unchanged. No additional sweeps authorized.
 - Do not start pixel experiments or additional sweeps without user authorization.
 - Verify `mountpoint -q /mnt/research` before controller writes. Keep large artifacts on project data storage, not `/`.
 - Never expose credentials, dump full environments, modify `/root/.ssh`, or alter unrelated projects. Preserve working worker drivers/base packages.
