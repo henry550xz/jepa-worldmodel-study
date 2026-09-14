@@ -23,7 +23,21 @@ class CheckpointAdapter:
         from plan import load_model
         from omegaconf import OmegaConf
         cfg=OmegaConf.load(config)
-        return cls(load_model(Path(checkpoint),cfg,cfg.num_action_repeat,device='cuda'),**kwargs)
+        # Upstream Accelerate optimizer pickles can reference TrajSubset. Its
+        # __getattr__ recurses before dataset is restored during unpickling.
+        # Guard only deserialization; no model tensors or source files change.
+        from datasets.traj_dset import TrajSubset
+        original=TrajSubset.__getattr__
+        def safe_getattr(self,name):
+            dataset=self.__dict__.get('dataset')
+            if dataset is None:raise AttributeError(name)
+            return getattr(dataset,name)
+        TrajSubset.__getattr__=safe_getattr
+        try:
+            model=load_model(Path(checkpoint),cfg,cfg.num_action_repeat,device='cuda')
+        finally:
+            TrajSubset.__getattr__=original
+        return cls(model,**kwargs)
 
     @torch.no_grad()
     def features(self, observations):

@@ -53,7 +53,7 @@ def run(root,run_id):
     repo=Path(__file__).resolve().parents[1];info=provenance(repo)
     folder=root/'runs'/run_id;m=json.loads((folder/'manifest.json').read_text())
     if m['phase']!='readiness' or m['status']!='training_complete':raise ValueError('completed bounded readiness training required')
-    out=folder/'common-readiness';out.mkdir(exist_ok=False)
+    out=folder/('common-readiness-'+info['git_sha'][:12]);out.mkdir(exist_ok=False)
     report={'status':'running','checkpoint_run':run_id,'training_sha':m['git_sha'],'evaluator_sha':info['git_sha'],
             'partitions_sha256':hashlib.sha256(PARTITIONS.read_bytes()).hexdigest(),'scope':'bounded plumbing validation, not scientific performance'}
     start=time.perf_counter()
