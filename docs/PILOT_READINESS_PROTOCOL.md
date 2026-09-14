@@ -17,3 +17,9 @@ CEM:64 samples,8 elites,5 iterations; horizon5; execute1 model action (5 simulat
 Training diagnostics are matched across arms: scalar train/validation losses, no upstream full-dataset visualization/open-loop diagnostics. Measure8 update timings, exclude first2 from steady throughput, and preserve optimizer/gradient checks. First-step action gradient may be zero from AdaLN-zero; check after warmup. Encoder/dynamics/decoder gradients remain mandatory. FP32 recommendations must consider both measured allocated and reserved peak VRAM plus driver headroom.
 
 Full research training is explicitly NOT authorized by passing this gate. Exact launch commands are proposals until the user authorizes them.
+
+## Executable evaluation profiles
+
+`python -m study.evaluate_common RUN_ID --profile readiness` runs the bounded gate. `--profile pilot` accepts only a completed pilot manifest, fits probes using all512/128 train/validation episodes, evaluates all124 untouched probe-test episodes (with explicit unsupported-horizon skips), and evaluates50 frozen simulator seeds with10 replans each. Both use the same implementation and per-replan compute budget. The full profile is prepared but is not run by this gate.
+
+Candidate-bank version2 generates goal actions using `goal_horizon` independently of candidate `rollout_horizon`; executed prefix remains independent. Banks and their true simulator scores are stored once, fingerprinted, and shared by all arms. Physical probe goals are supplied in physical coordinates equally to every arm; the model never sees true candidate outcomes while planning.
