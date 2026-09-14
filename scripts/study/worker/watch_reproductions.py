@@ -34,7 +34,7 @@ def record(path, state):
     subprocess.run(['mountpoint','-q','/mnt/research'],check=True)
     temp=path.with_suffix('.tmp');temp.write_text(json.dumps(state,indent=2)+'\n');temp.replace(path)
     # Keep live progress in queue JSON; update the handoff only at completion.
-    if state.get('status') != 'complete':
+    if state.get('status') != 'complete' or state.get('stage') != 'complete':
         return
     status=REPO/'docs/CURRENT_PROJECT_STATUS.md'
     marker='\n## Live reproduction monitor\n'
@@ -111,7 +111,7 @@ def main():
     if path.exists() and not a.resume:raise RuntimeError('queue record already exists; use --resume after inspection')
     state=json.loads(path.read_text()) if path.exists() else {'source_sha':a.sha,'alias':a.alias,'gaussian_run':a.gaussian_run,'status':'starting'}
     if state['source_sha']!=a.sha or state['gaussian_run']!=a.gaussian_run or state['alias']!=a.alias:raise ValueError('resume identity mismatch')
-    if state['status']=='complete':return
+    if state['status']=='complete' and state.get('stage')=='complete':return
     state.pop('error',None); state.pop('error_type',None)
     record(path,state)
     try:
@@ -143,6 +143,7 @@ def main():
         m=wait(a.alias,sparse,'training',state,path)
         if m['evaluation_settings']['status']=='not_run':launch_plan(a.alias,a.sha,sparse)
         m=wait(a.alias,sparse,'evaluation',state,path)
+        state.update(stage='checkpoint_retention',status='running',updated_at=time.time()); record(path,state)
         retain_checkpoint(a.alias,sparse,m)
         import sys
         sys.path.insert(0,str(REPO))

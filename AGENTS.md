@@ -16,7 +16,7 @@ Whenever the user resumes and says **continue**:
 6. If it is running correctly, compute a fresh ETA from recent observed throughput. Separate measured training estimates from unknown planning time.
 7. Keep intermediate progress in queue state and session reports. Update `docs/CURRENT_PROJECT_STATUS.md` once the authorized reproduction goal is finished; do not rewrite or commit the handoff on every check.
 8. Report what is running, progress, health, ETA and the automatic next step.
-9. Exit the interactive session.
+9. If the remaining goal ETA is under five minutes, stay, check progress at intervals, verify completion/artifacts and deliver the final report. Otherwise exit while the persistent supervisor continues.
 
 If infrastructure fails: preserve evidence, diagnose, repair and safely resume the existing queue within the authorized scope. Reconcile worker manifests/processes before retrying ambiguous launches; never repeat completed experiments. Reporting a recoverable error is not task completion. If a scientific stage fails, diagnose and apply protocol-preserving fixes where possible; document retries/deviations and do not skip failed stages. Stop only for a real unresolved blocker, recording the required next action. Exit once the persistent supervisor is demonstrably advancing the authorized queue, or a real blocker remains.
 
