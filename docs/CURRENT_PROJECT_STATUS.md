@@ -1,17 +1,26 @@
 # Current project status
 
 ## Current execution
-**Gaussian training and official planning completed successfully. The controller monitor FAILED during the planning launch; the sequential queue is halted before checkpoint retention and sparse reproduction.**
+**Gaussian training and official planning completed successfully. Queue recovery is now supervised by systemd; reconciliation/checkpoint retention precedes sparse reproduction.**
 
 - Worker: `autodl-jepa`, RTX5090, driver595.71.05, CUDA runtime12.8.
 - Immutable training/evaluation code SHA: `0f1720a0be0c73a98a16ce48936c052d7aaee3a6`.
 - Completed full Gaussian run: `gaussian-s0-20260913T214253-97d19b52dc9f`.
 - Training: official2 epochs, batch64, all1,981,721 windows/epoch,61,930 total optimizer steps. Latest measured progress and ETA are recorded below; final peak VRAM and full-run utilization averages remain pending.
-- Controller monitor: tmux session `jepa-reproduction-monitor`; state `/mnt/research/jepa-worldmodel-study-storage/runs/reproduction-queue.json`.
+- Controller supervisor: systemd service `jepa-reproduction-queue.service`; state `/mnt/research/jepa-worldmodel-study-storage/runs/reproduction-queue.json`.
 - Sequence enforced: Gaussian training -> official Gaussian planning -> verified checkpoint retention -> sparse training -> official sparse planning -> verified retention -> generated report. Stops on failures. No pixel training or large sweep.
 - Compact results sync back every monitoring cycle. Completed report will be `/mnt/research/jepa-worldmodel-study-storage/runs/UPSTREAM_REPRODUCTION_REPORT.md`; it does not exist until both evaluations complete.
 
-## Latest operator check — 2026-09-14 12:46 UTC
+## Supervisor recovery — 2026-09-14 12:53 UTC
+
+- Repaired the SSH launch timeout: worker Python Popen starts a new session with all standard descriptors redirected and closes inherited descriptors. Worker flock prevents overlapping launches; controller flock prevents duplicate monitors. Local functional regression check verified immediate return and one child for two competing launches.
+- Committed supervisor/rule fix `fd4880f`. Scientific worker snapshot remains `0f1720a0be0c73a98a16ce48936c052d7aaee3a6`; Gaussian is not rerun.
+- Enabled and started systemd `jepa-reproduction-queue.service`, restart-on-failure with60s delay, mount dependency and boot persistence. Scientific/protocol RuntimeError exits78 prevent blind restarts. No tmux required. Service logs append to existing reproduction-watcher.log; prior failure evidence preserved.
+- Rule clarified: repair recoverable infrastructure failures and safely resume within authorization; reporting an error alone does not finish the task. Interactive sessions exit after verifying persistent execution, not after abandoning recoverable errors.
+- Service reconciles completed Gaussian manifests, retrieves compact evidence, hash-verifies retained checkpoint, then launches sparse training/planning and generates final report. Live state below is authoritative for current stage. Full study is not yet complete.
+- Remaining sparse training estimate ~4h33m based on Gaussian full-run timing; sparse planning unmeasured (Gaussian24m45s reference), plus checkpoint transfer time. Do not claim an exact final completion time before sparse starts.
+
+## Previous failure diagnosis — 2026-09-14 12:46 UTC
 
 - No active JEPA job. Controller tmux monitor is absent; queue records `watcher_failed` / `TimeoutExpired`. Its `stage=training` is stale and does not reflect completed worker evaluation.
 - Gaussian run `gaussian-s0-20260913T214253-97d19b52dc9f`: training exit0, completed02:16:14 UTC; official50-episode planning exit0, completed02:42:00 UTC. Final success rate0.72 (36/50); upstream mean_state_dist197.0362. These results establish successful execution, not paper-level numerical agreement.
@@ -49,7 +58,7 @@ Pixel baseline is implemented independently, tested for plumbing, and not launch
 
 Official CEM uses simulator-informed early stopping and couples goal/rollout/prefix; those semantics remain only for reproduction. Upstream checkpoint resume omits/reinitializes parts of state, so exact resumption is not established. Numeric agreement with paper cannot be claimed without an authoritative target for the selected cell. We are testing WHETHER and WHEN JEPA helps, not assuming it wins.
 
-Exact next action: repair controller monitor launch detachment and resume the existing queue after checking completed Gaussian evidence; retain its checkpoint, then run sparse under identical conditions.
+Exact next action: systemd queue retains the Gaussian checkpoint and advances sparse; inspect live state and service health on continue. Repair recoverable failures rather than merely reporting them.
 
 ## Live reproduction monitor
 
@@ -60,11 +69,9 @@ Updated automatically from the controller monitor; no scientific result is infer
   "source_sha": "0f1720a0be0c73a98a16ce48936c052d7aaee3a6",
   "alias": "autodl-jepa",
   "gaussian_run": "gaussian-s0-20260913T214253-97d19b52dc9f",
-  "status": "watcher_failed",
+  "status": "running",
   "active_run": "gaussian-s0-20260913T214253-97d19b52dc9f",
-  "stage": "training",
-  "updated_at": 1789352278.4697206,
-  "error_type": "TimeoutExpired",
-  "error": "Command '['ssh', '-o', 'BatchMode=yes', '-o', 'StrictHostKeyChecking=yes', '-o', 'UpdateHostKeys=no', '-o', 'ConnectTimeout=20', '-o', 'ServerAliveInterval=30', '-o', 'ServerAliveCountMax=4', 'autodl-jepa', 'cd /root/autodl-tmp/robotics/jepa-worldmodel-study/code/0f1720a0be0c73a98a16ce48936c052d7aaee3a6 && nohup /root/autodl-tmp/robotics/jepa-worldmodel-study/envs/lpwm-5090/bin/python -m study.plan_official gaussian-s0-20260913T214253-97d19b52dc9f > /root/autodl-tmp/robotics/jepa-worldmodel-study/runs/gaussian-s0-20260913T214253-97d19b52dc9f/planning-launch.log 2>&1 < /dev/null &']' timed out after 45 seconds"
+  "stage": "checkpoint_retention",
+  "updated_at": 1789390421.5015225
 }
 ```
