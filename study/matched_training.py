@@ -12,7 +12,7 @@ def install(train, telemetry, bounded_steps):
     def run_epoch(self, training):
         self.model.train(training)
         loader=self.dataloaders['train' if training else 'valid']
-        limit=bounded_steps if training else (2 if bounded_steps else None)
+        limit=(bounded_steps or None) if training else (2 if bounded_steps else None)
         for i,(obs,act,state) in enumerate(itertools.islice(loader,limit)):
             torch.cuda.synchronize();start=time.perf_counter()
             opts=[getattr(self,n,None) for n in ['encoder_optimizer','predictor_optimizer','action_encoder_optimizer','decoder_optimizer']]
