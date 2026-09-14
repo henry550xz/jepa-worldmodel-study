@@ -33,6 +33,9 @@ def manifest(alias, run_id):
 def record(path, state):
     subprocess.run(['mountpoint','-q','/mnt/research'],check=True)
     temp=path.with_suffix('.tmp');temp.write_text(json.dumps(state,indent=2)+'\n');temp.replace(path)
+    # Keep live progress in queue JSON; update the handoff only at completion.
+    if state.get('status') != 'complete':
+        return
     status=REPO/'docs/CURRENT_PROJECT_STATUS.md'
     marker='\n## Live reproduction monitor\n'
     original=status.read_text().split(marker)[0]
