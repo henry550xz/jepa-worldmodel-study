@@ -20,7 +20,7 @@ state={'checked_at':time.time(),'stage':(q/'stage').read_text().strip() if (q/'s
 if (q/'queue.json').exists():state['worker_queue']=json.loads((q/'queue.json').read_text())
 for f in r.glob('*/manifest.json'):
  m=json.loads(f.read_text())
- if m.get('phase')!='pilot':continue
+ if m.get('phase')!='pilot' or m['git_sha']!=EXPECTED_SHA:continue
  entry={'run_id':m['run_id'],'method':m['method'],'status':m['status'],'git_sha':m['git_sha'],'training_start':m.get('training_start'),'training_wall_seconds':m.get('training_wall_seconds')}
  log=f.parent/'train.log'
  if log.exists():
@@ -29,6 +29,7 @@ for f in r.glob('*/manifest.json'):
   matches=re.findall(r'MATCHED train epoch=(\d+) step=(\d+) batch=(\d+) seconds=([\d.]+)',tail)
   if matches:entry['progress']=matches[-1]
   entry['log_age_seconds']=time.time()-log.stat().st_mtime
+ entry['evaluation_banks_started']=len(list(f.parent.glob('common-pilot-*/candidate-scores-*.npz')))
  results=list(f.parent.glob('common-pilot-*/metrics.json'))
  if results:entry['evaluation']=json.loads(max(results,key=lambda x:x.stat().st_mtime).read_text()).get('status')
  state['runs'].append(entry)
@@ -37,10 +38,12 @@ print(json.dumps(state))
 
 
 def main():
-    p=argparse.ArgumentParser();p.add_argument('alias');a=p.parse_args()
+    p=argparse.ArgumentParser();p.add_argument('alias');p.add_argument('sha');a=p.parse_args()
+    import re
+    if not re.fullmatch('[0-9a-f]{40}',a.sha):raise ValueError('immutable pilot SHA required')
     while True:
         subprocess.run(['mountpoint','-q','/mnt/research'],check=True)
-        state=json.loads(subprocess.check_output([*SSH,a.alias,'/root/miniconda3/bin/python -c '+shlex.quote(REMOTE)],text=True,timeout=45))
+        state=json.loads(subprocess.check_output([*SSH,a.alias,'/root/miniconda3/bin/python -c '+shlex.quote('EXPECTED_SHA='+repr(a.sha)+'\n'+REMOTE)],text=True,timeout=45))
         for run in state['runs']:
             subprocess.run(['bash',str(REPO/'scripts/study/worker/sync_compact_results_back.sh'),a.alias,run['run_id']],check=True,timeout=180)
         path=STORE/'runs/pilot-queue.json';temp=path.with_suffix('.tmp');temp.write_text(json.dumps(state,indent=2)+'\n');temp.replace(path)

@@ -10,6 +10,7 @@ exec 9>"$ROOT/runs/three-arm-pilot.lock"
 flock -n 9 || { echo 'Pilot queue already active' >&2; exit 2; }
 # Refuse duplicate/restarted scientific queues; recovery requires manifest inspection.
 mkdir "$ROOT/runs/three-arm-pilot-queue"
+trap 'printf "failed\n" > "$ROOT/runs/three-arm-pilot-queue/stage"' ERR
 DATA_VERSION=442f5dee246edf670964ed7bdecd248683cd6d00580fa0e4d458abb53f92da08
 for method in pixel gaussian sparse; do
     printf '%s training\n' "$method" > "$ROOT/runs/three-arm-pilot-queue/stage"
