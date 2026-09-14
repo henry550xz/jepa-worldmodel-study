@@ -1,0 +1,19 @@
+[Unit]
+Description=JEPA upstream reproduction queue
+Wants=network-online.target
+After=network-online.target
+RequiresMountsFor=/mnt/research
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+WorkingDirectory=/mnt/research/robotics/jepa-worldmodel-study
+ExecStart=/usr/bin/python3 -u scripts/study/worker/watch_reproductions.py autodl-jepa 0f1720a0be0c73a98a16ce48936c052d7aaee3a6 gaussian-s0-20260913T214253-97d19b52dc9f --resume
+Restart=on-failure
+RestartSec=60
+RestartPreventExitStatus=78
+StandardOutput=append:/mnt/research/jepa-worldmodel-study-storage/runs/reproduction-watcher.log
+StandardError=append:/mnt/research/jepa-worldmodel-study-storage/runs/reproduction-watcher.log
+
+[Install]
+WantedBy=multi-user.target

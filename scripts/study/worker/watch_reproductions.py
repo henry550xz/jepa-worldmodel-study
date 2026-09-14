@@ -5,6 +5,8 @@ No science code is changed. Uses immutable worker snapshots and retrieves eviden
 Stops on any failed run. Never deletes remote/local results or logs environments.
 """
 import argparse
+import fcntl
+import shlex
 import hashlib
 import json
 import os
@@ -55,11 +57,23 @@ def wait(alias,run_id,stage,state,path):
         time.sleep(60)
 
 
+def launch_background(alias, sha, key, arguments, logfile):
+    # Popen returns immediately; no SSH descriptors survive in the worker job.
+    # flock also covers ambiguous SSH responses and concurrent launch attempts.
+    payload = (
+        "import subprocess; "
+        f"log=open({logfile!r}, 'ab'); "
+        f"subprocess.Popen({['flock','-n',ROOT+'/runs/'+key+'.lock',ROOT+'/envs/lpwm-5090/bin/python',*arguments]!r}, "
+        f"cwd={ROOT+'/code/'+sha!r}, stdin=subprocess.DEVNULL, stdout=log, "
+        "stderr=subprocess.STDOUT, start_new_session=True, close_fds=True)"
+    )
+    remote(alias, '/root/miniconda3/bin/python -c ' + shlex.quote(payload))
+
+
 def launch_plan(alias,sha,run_id):
-    command=(f'cd {ROOT}/code/{sha} && '
-        f'nohup {ROOT}/envs/lpwm-5090/bin/python -m study.plan_official {run_id} '
-        f'> {ROOT}/runs/{run_id}/planning-launch.log 2>&1 < /dev/null &')
-    remote(alias,command)
+    launch_background(alias, sha, run_id+'-planning',
+                      ['-m','study.plan_official',run_id],
+                      ROOT+'/runs/'+run_id+'/planning-launch.log')
     # Allow imports/provenance checks to transition the existing evaluation record.
     for _ in range(20):
         m=manifest(alias,run_id)
@@ -88,11 +102,14 @@ def main():
     if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._-]*',a.alias) or not re.fullmatch(r'[0-9a-f]{40}',a.sha):raise ValueError('invalid alias/SHA')
     if not re.fullmatch(r'gaussian-[A-Za-z0-9_-]+',a.gaussian_run):raise ValueError('invalid Gaussian run')
     subprocess.run(['mountpoint','-q','/mnt/research'],check=True)
+    lock=(STORE/'runs'/'reproduction-monitor.lock').open('a')
+    fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
     path=STORE/'runs'/'reproduction-queue.json'
     if path.exists() and not a.resume:raise RuntimeError('queue record already exists; use --resume after inspection')
     state=json.loads(path.read_text()) if path.exists() else {'source_sha':a.sha,'alias':a.alias,'gaussian_run':a.gaussian_run,'status':'starting'}
     if state['source_sha']!=a.sha or state['gaussian_run']!=a.gaussian_run or state['alias']!=a.alias:raise ValueError('resume identity mismatch')
     if state['status']=='complete':return
+    state.pop('error',None); state.pop('error_type',None)
     record(path,state)
     try:
         m=manifest(a.alias,a.gaussian_run)
@@ -100,18 +117,20 @@ def main():
         m=wait(a.alias,a.gaussian_run,'training',state,path)
         if m['evaluation_settings']['status']=='not_run':launch_plan(a.alias,a.sha,a.gaussian_run)
         m=wait(a.alias,a.gaussian_run,'evaluation',state,path)
+        state.update(stage='checkpoint_retention',status='running',updated_at=time.time()); record(path,state)
         retain_checkpoint(a.alias,a.gaussian_run,m)
         # Only launch sparse after Gaussian training AND official planning succeed.
-        command=(f'cd {ROOT}/code/{a.sha} && nohup {ROOT}/envs/lpwm-5090/bin/python -m study.run '
-            f'--method sparse --phase reproduction --dataset-version {m["dataset_version"]} '
-            f'> {ROOT}/runs/sparse-reproduction-launch.log 2>&1 < /dev/null &')
         def existing_sparse():
             payload=remote(a.alias,f"/root/miniconda3/bin/python -c \"import pathlib,json; print(json.dumps([json.loads(p.read_text()) for p in pathlib.Path('{ROOT}/runs').glob('sparse-*/manifest.json')]))\"")
             candidates=[x for x in json.loads(payload) if x['phase']=='reproduction' and x['git_sha']==a.sha]
             if len(candidates)>1:raise RuntimeError('ambiguous sparse reproduction runs')
             return candidates[0]['run_id'] if candidates else None
         sparse=state.get('sparse_run') or existing_sparse()
-        if sparse is None:remote(a.alias,command)
+        if sparse is None:
+            launch_background(a.alias,a.sha,'sparse-reproduction',
+                              ['-m','study.run','--method','sparse','--phase','reproduction',
+                               '--dataset-version',m['dataset_version']],
+                              ROOT+'/runs/sparse-reproduction-launch.log')
         for _ in range(30):
             sparse=sparse or existing_sparse()
             if sparse:break
@@ -129,6 +148,8 @@ def main():
         state.update(status='complete',stage='complete',report=str(report),updated_at=time.time())
     except BaseException as e:
         state.update(status='watcher_failed',error_type=type(e).__name__,error=str(e),updated_at=time.time())
+        if isinstance(e, RuntimeError):
+            raise SystemExit(78) from e  # Requires diagnosis, not blind automatic retries.
         raise
     finally:record(path,state)
 

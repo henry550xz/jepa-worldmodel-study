@@ -18,13 +18,13 @@ Whenever the user resumes and says **continue**:
 8. Report what is running, progress, health, ETA and the automatic next step.
 9. Exit the interactive session.
 
-If a stage fails: preserve logs/artifacts, diagnose, do not silently advance the scientific queue, update the handoff, report the failure and next action, then exit.
+If infrastructure fails: preserve evidence, diagnose, repair and safely resume the existing queue within the authorized scope. Reconcile worker manifests/processes before retrying ambiguous launches; never repeat completed experiments. Reporting a recoverable error is not task completion. If a scientific stage fails, diagnose and apply protocol-preserving fixes where possible; document retries/deviations and do not skip failed stages. Stop only for a real unresolved blocker, recording the required next action. Exit once the persistent supervisor is demonstrably advancing the authorized queue, or a real blocker remains.
 
 **The persistent monitor owns waiting. Interactive Codex owns checking, decisions, handoff and reporting.**
 
 ## Current infrastructure and boundaries
 
-- Monitor: controller tmux session `jepa-reproduction-monitor`.
+- Supervisor: controller systemd service `jepa-reproduction-queue.service`; no tmux dependency. Automatic infrastructure retries must be idempotent; scientific failures stop for diagnosis.
 - Queue state: `/mnt/research/jepa-worldmodel-study-storage/runs/reproduction-queue.json`.
 - Confirmed worker: `autodl-jepa`; workspace `/root/autodl-tmp/robotics/jepa-worldmodel-study/`.
 - Read the live queue for the active run and immutable experiment SHA; never assume an old run ID is still active.
