@@ -33,3 +33,7 @@ If infrastructure fails: preserve evidence, diagnose, repair and safely resume t
 - Verify `mountpoint -q /mnt/research` before controller writes. Keep large artifacts on project data storage, not `/`.
 - Never expose credentials, dump full environments, modify `/root/.ssh`, or alter unrelated projects. Preserve working worker drivers/base packages.
 - Run committed snapshots. Documentation-only handoff updates may advance controller HEAD without changing the active experiment snapshot. Commit/push instruction and handoff changes consistently with repository practice; the monitor may subsequently refresh its live section.
+
+## Chronological handoff
+
+Keep `docs/CURRENT_PROJECT_STATUS.md` chronological: scientific definition and immutable environment first, then concise validated milestones oldest to newest. Never prepend a new result or duplicate historical current-status blocks. Add new milestones immediately before the single final `## CURRENT / LATEST STATE` section. That final section must always be last and identify worker/queue state, latest validation, exact next action, immutable run SHA and pending items.
