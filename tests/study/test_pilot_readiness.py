@@ -47,3 +47,14 @@ def test_adapter_supports_upstream_nonfluent_eval():
     adapter=CheckpointAdapter(Nonfluent(2,2))
     assert adapter.model.training is False
     assert all(not p.requires_grad for p in adapter.model.parameters())
+
+
+def test_probe_ignores_unidentifiable_constant_training_features():
+    import pytest
+    torch=pytest.importorskip('torch')
+    from study.probes import Probe
+    x=torch.tensor([[1.,0.],[2.,0.],[3.,0.]])
+    probe=Probe(x,torch.tensor([[1.],[2.],[3.]]))
+    a=probe(torch.tensor([[2.,0.]]));b=probe(torch.tensor([[2.,1000000.]]))
+    torch.testing.assert_close(a,b)
+    assert probe.x_active.tolist()==[1.,0.]

@@ -25,7 +25,9 @@ class Probe(nn.Module):
         super().__init__()
         x, y = train_features.detach(), train_targets.detach()
         self.register_buffer('x_mean', x.mean(0))
-        self.register_buffer('x_scale', x.std(0, unbiased=False).clamp_min(1e-6))
+        std=x.std(0, unbiased=False)
+        self.register_buffer('x_active', (std>1e-6).to(x.dtype))
+        self.register_buffer('x_scale', torch.where(std>1e-6,std,torch.ones_like(std)))
         self.register_buffer('y_mean', y.mean(0))
         self.register_buffer('y_scale', y.std(0, unbiased=False).clamp_min(1e-6))
         self.net = nn.Linear(x.shape[-1], y.shape[-1]) if hidden == 0 else nn.Sequential(
@@ -33,7 +35,7 @@ class Probe(nn.Module):
         self.to(x.device)
 
     def forward(self, x):
-        return self.net((x.detach()-self.x_mean)/self.x_scale)*self.y_scale+self.y_mean
+        return self.net(((x.detach()-self.x_mean)/self.x_scale)*self.x_active)*self.y_scale+self.y_mean
 
 
 def fit_probe(train_x, train_y, val_x, val_y, *, hidden=0, steps=500, lr=1e-3, seed=0):

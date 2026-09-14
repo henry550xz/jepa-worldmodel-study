@@ -60,7 +60,9 @@ def run(root,run_id,profile='readiness'):
             'partitions_sha256':hashlib.sha256(PARTITIONS.read_bytes()).hexdigest(),'scope':profile}
     start=time.perf_counter()
     try:
+        torch.cuda.reset_peak_memory_stats()
         adapter=CheckpointAdapter.load(m['checkpoint_path'],folder/'resolved-config.yaml')
+        report['checkpoint_load_peak_vram_bytes']=torch.cuda.max_memory_allocated()
         torch.cuda.reset_peak_memory_stats()
         data=PushTDataset(data_path=str(root/'datasets/pusht_noise/train'),transform=default_transform())
         parts=read_partitions()['partitions'];feature_sets={};selection={}
@@ -87,6 +89,7 @@ def run(root,run_id,profile='readiness'):
             from study.probes import physical_states
             x,y=feature_sets['probe_test']
             fit['test_metrics']=physical_metrics(physical_states(probe(x)).cpu().numpy(),physical_states(y).cpu().numpy())
+            fit['active_features']=int(probe.x_active.sum());fit['total_features']=len(probe.x_active)
             report['probes'][name]=fit;torch.save(probe,out/(name+'-probe.pt'))
             if name=='linear':adapter.probe=probe
         report['open_loop']=[]
