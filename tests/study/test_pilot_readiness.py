@@ -36,3 +36,14 @@ def test_shared_cem_budget_and_action_prefix():
     actions,counts=cem(Oracle(),None,None,s,0)
     assert actions.shape==(5,10) and counts['candidate_evaluations']==320
     assert counts['execute_prefix']==1
+
+
+def test_adapter_supports_upstream_nonfluent_eval():
+    import pytest
+    torch=pytest.importorskip('torch')
+    from study.adapters import CheckpointAdapter
+    class Nonfluent(torch.nn.Linear):
+        def train(self,mode=True):super().train(mode)
+    adapter=CheckpointAdapter(Nonfluent(2,2))
+    assert adapter.model.training is False
+    assert all(not p.requires_grad for p in adapter.model.parameters())

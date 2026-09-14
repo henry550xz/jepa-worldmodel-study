@@ -13,7 +13,8 @@ def physical_cost(states, goal):
 
 class CheckpointAdapter:
     def __init__(self, model, probe=None, chunk_size=8):
-        self.model=model.eval().requires_grad_(False)
+        model.eval()  # Upstream overrides train()/eval() without returning self.
+        self.model=model.requires_grad_(False)
         self.probe=probe
         self.chunk_size=chunk_size
         self.device=next(model.parameters()).device
