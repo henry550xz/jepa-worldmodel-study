@@ -6,9 +6,10 @@ def main():
     p=argparse.ArgumentParser();p.add_argument('--telemetry',required=True);p.add_argument('overrides',nargs=argparse.REMAINDER);a=p.parse_args()
     import torch,train
     from study.mechanism import latent_closure
+    spec=json.loads((Path(__file__).resolve().parents[1]/'conf/study/mechanism.json').read_text());assert 1<=spec['smoke_updates']<=32 and 1<=spec['validation_batches']<=4
     stats={'status':'running','steps':[]};initial={};work={}
     def run_epoch(self,training):
-        self.model.train(training);limit=8 if training else 2
+        self.model.train(training);limit=spec['smoke_updates'] if training else spec['validation_batches']
         loader=iter(self.dataloaders['train' if training else 'valid']);last=time.perf_counter()
         for i in range(limit):
             obs,act,state=next(loader);wait=time.perf_counter()-last
@@ -39,7 +40,7 @@ def main():
             self.logs_update({('train_' if training else 'val_')+'loss':[float(loss.detach())]})
             if not training:
                 with torch.no_grad():
-                    history={k:v[:,:3] for k,v in obs.items()};z,_=self.model.rollout(history,act[:,:5]);truth=self.model.encode_obs_linked({k:v[:,3:6] for k,v in obs.items()})['visual'];stats.setdefault('latent_closure',[]).append(latent_closure(z['visual'][:,3:6],truth))
+                    h,k=self.model.num_hist,self.model.training_horizon;history={key:v[:,:h] for key,v in obs.items()};z,_=self.model.rollout(history,act[:,:h+k-1]);truth=self.model.encode_obs_linked({key:v[:,h:h+k] for key,v in obs.items()})['visual'];stats.setdefault('latent_closure',[]).append(latent_closure(z['visual'][:,h:h+k],truth))
             last=time.perf_counter();print(self.model.mechanism,'train' if training else 'validation',i+1,float(loss.detach()),flush=True)
     train.Trainer.train=lambda self:run_epoch(self,True);train.Trainer.val=lambda self:run_epoch(self,False)
     original=train.Trainer.init_models
