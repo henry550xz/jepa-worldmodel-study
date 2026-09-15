@@ -3,7 +3,7 @@ import os,argparse,json
 from pathlib import Path
 
 def main():
- p=argparse.ArgumentParser();p.add_argument('run_id');a=p.parse_args()
+ p=argparse.ArgumentParser();p.add_argument('run_id');p.add_argument('--profile',choices=['readiness','pilot'],default='readiness');a=p.parse_args()
  from study.run import worker_root_checked
  root=worker_root_checked('/root/autodl-tmp/robotics/jepa-worldmodel-study');os.environ.update(DATASET_DIR=str(root/'datasets'),TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD='1',SDL_VIDEODRIVER='dummy',WANDB_MODE='offline',TMPDIR=str(root/'caches/tmp'),MPLCONFIGDIR=str(root/'caches/matplotlib'),XDG_CACHE_HOME=str(root/'caches/xdg'),TORCH_HOME=str(root/'caches/torch'))
  import torch,numpy as np
@@ -29,9 +29,9 @@ def main():
      image=self.model.decode_obs({'visual':z})[0]['visual'];features=self.features({'visual':image})
     results.append(physical_states(self.probe(features)).cpu().numpy())
    return np.concatenate(results,1)
- evaluation.CheckpointAdapter=CompatibleAdapter;evaluation.run(root,a.run_id,'readiness')
+ evaluation.CheckpointAdapter=CompatibleAdapter;evaluation.run(root,a.run_id,a.profile)
  # Extend completed smoke report with closure against true future encodings.
- folder=root/'runs'/a.run_id;report_path=folder/('common-readiness-'+evaluation.provenance(Path(__file__).resolve().parents[1])['git_sha'][:12])/'metrics.json';report=json.loads(report_path.read_text());m=json.loads((folder/'manifest.json').read_text());ad=CompatibleAdapter.load(m['checkpoint_path'],folder/'resolved-config.yaml')
+ folder=root/'runs'/a.run_id;report_path=folder/('common-'+a.profile+'-'+evaluation.provenance(Path(__file__).resolve().parents[1])['git_sha'][:12])/'metrics.json';report=json.loads(report_path.read_text());m=json.loads((folder/'manifest.json').read_text());ad=CompatibleAdapter.load(m['checkpoint_path'],folder/'resolved-config.yaml')
  from datasets.pusht_dset import PushTDataset
  from datasets.img_transforms import default_transform
  data=PushTDataset(data_path=str(root/'datasets/pusht_noise/train'),transform=default_transform());results=[]

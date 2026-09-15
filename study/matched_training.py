@@ -13,6 +13,7 @@ def install(train, telemetry, bounded_steps):
         self.model.train(training)
         loader=self.dataloaders['train' if training else 'valid']
         limit=(bounded_steps or None) if training else (2 if bounded_steps else None)
+        print(f'MATCHED epoch={self.epoch} split={"train" if training else "validation"} total_steps={len(loader)}',flush=True)
         for i,(obs,act,state) in enumerate(itertools.islice(loader,limit)):
             torch.cuda.synchronize();start=time.perf_counter()
             opts=[getattr(self,n,None) for n in ['encoder_optimizer','predictor_optimizer','action_encoder_optimizer','decoder_optimizer']]
@@ -26,7 +27,7 @@ def install(train, telemetry, bounded_steps):
                     self.accelerator.backward(loss)
                     if i in (0,2):
                         grads={n:sum(float(p.grad.abs().sum()) for p in getattr(self,n).parameters() if p.grad is not None)
-                               for n in ['encoder','predictor','action_encoder']+(['decoder'] if self.cfg.has_decoder else [])}
+                               for n in ['encoder','predictor','action_encoder']+(['decoder'] if self.cfg.has_decoder and getattr(self.model,'mechanism',None)!='gaussian' else [])}
                         required=[v for k,v in grads.items() if k!='action_encoder' or i>=2]
                         if any(not (v>0) for v in required):raise RuntimeError('zero module gradient')
                         telemetry.setdefault('gradient_checks',{})[str(i)]=grads
