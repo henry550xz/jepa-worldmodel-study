@@ -1,0 +1,21 @@
+{
+  "version": "draft-v1",
+  "arms": ["pixel", "pixel_rollout", "pixel_consistency", "gaussian"],
+  "seed": 0,
+  "history": 3,
+  "training_horizon": 3,
+  "frameskip": 5,
+  "batch_size": 32,
+  "precision": "float32",
+  "learning_rate": 0.0001,
+  "latent_consistency_weight": 1.0,
+  "detach_target": false,
+  "gaussian_regularizer_weight": 0.5,
+  "smoke_updates": 8,
+  "validation_batches": 2,
+  "full_training_authorized": false,
+  "compute_policy": "matched windows and updates; measure unequal objective costs; no claim of equal FLOPs",
+  "evaluation_protocol": "conf/study/pilot.json",
+  "physical_readout": "same frozen-probe protocol; raw-latent and decoded/reencoded readout diagnostics must be reported separately for pixel arms",
+  "latent_closure": "mean squared predicted latent minus encoded true future; also variance-normalized error and cosine; never compare unnormalized latent MSE as physical performance"
+}
