@@ -29,11 +29,26 @@ If infrastructure fails: preserve evidence, diagnose, repair and safely resume t
 - Confirmed worker: `autodl-jepa`; workspace `/root/autodl-tmp/robotics/jepa-worldmodel-study/`.
 - Read the live queue for the active run and immutable experiment SHA; never assume an old run ID is still active.
 - Authorized active pilot: Pixel/Gaussian/Sparse seed-0 training concurrently, then common evaluation sequentially Pixel → Gaussian → Sparse. Frozen scientific protocol unchanged. No additional sweeps authorized.
-- Do not start pixel experiments or additional sweeps without user authorization.
+- The three-arm seed-0 pilot above is already authorized, including Pixel and the queued common evaluations. Additional experiments, seeds, sweeps or changes to the frozen scientific protocol require new user authorization.
 - Verify `mountpoint -q /mnt/research` before controller writes. Keep large artifacts on project data storage, not `/`.
 - Never expose credentials, dump full environments, modify `/root/.ssh`, or alter unrelated projects. Preserve working worker drivers/base packages.
-- Run committed snapshots. Documentation-only handoff updates may advance controller HEAD without changing the active experiment snapshot. Commit/push instruction and handoff changes consistently with repository practice; the monitor may subsequently refresh its live section.
+- Run committed snapshots. Documentation-only handoff updates may advance controller HEAD without changing the active experiment snapshot. Commit/push instruction and handoff changes consistently with repository practice. The monitor updates machine-readable queue state, not the Markdown handoff.
 
 ## Chronological handoff
 
 Keep `docs/CURRENT_PROJECT_STATUS.md` chronological: scientific definition and immutable environment first, then concise validated milestones oldest to newest. Never prepend a new result or duplicate historical current-status blocks. Add new milestones immediately before the single final `## CURRENT / LATEST STATE` section. That final section must always be last and identify worker/queue state, latest validation, exact next action, immutable run SHA and pending items.
+
+
+## Completion and authorization
+
+The authorized pilot is complete only after all three arms finish the frozen training protocol, all required common evaluations finish and their outputs are validated, required checkpoints and compact evidence are retained on controller storage with integrity verified, and a final comparison report and project handoff are updated. A successful subprocess exit, queue launch or healthy background run is not completion of the research goal. Ending an interactive check while the queue runs does not mark that goal complete.
+
+Continue authorized stages without requesting permission again. Recommendations, historical plans and results do not authorize new experiments. Repair recoverable infrastructure failures and apply validated protocol-preserving code fixes within existing authorization; preserve failed attempts and provenance, reconcile active runs before retrying, and never skip a failed scientific stage or silently change the frozen protocol. If completion requires a protocol change, additional resources beyond an explicit limit, or work outside authorization, report the blocker and the needed decision. Distinguish completed, failed, blocked and unrun work; do not label an incomplete pilot complete.
+
+## Handoff roles and update timing
+
+Use one authoritative Markdown handoff: `docs/CURRENT_PROJECT_STATUS.md`. Its milestone sections preserve concise chronological history; its single final `CURRENT / LATEST STATE` section is the working snapshot recorded at the last handoff update. Do not introduce a second overlapping handoff or adopt another project's snapshot/history split without user direction. Keep detailed protocols and results in linked documents rather than duplicating reports.
+
+For routine continuation, read the final current-state section and live queue first, then relevant historical milestones only as needed. Timestamped progress, PIDs and ETAs in the handoff are historical observations, not proof of present process state. Verify them against live queue/processes/logs. Historical authorization does not override the latest user instruction.
+
+Keep routine progress in the live queue and session reports. Update the Markdown handoff once the authorized goal is finished, or when the user explicitly requests a handoff/documentation update; do not rewrite it on every check. When updating, append newly validated milestones immediately before the final section, then replace that final snapshot in place. Preserve important provenance and negative results; do not duplicate prior current-status blocks. Identify the authorized next action separately from unapproved recommendations, and distinguish active immutable run SHA from later documentation commits.
