@@ -15,7 +15,7 @@ def main():
   subprocess.run(['rsync','-az','--partial','--safe-links','-e',' '.join(ssh),'--include=*.json','--include=*.npz','--exclude=*',a.alias+':'+remote+'/',str(dest)+'/'],check=True,timeout=180)
   print(json.dumps(state),flush=True)
   if state['status']=='complete':
-   records=[{'name:f.name,'sha256':hashlib.sha256(f.read_bytes()).hexdigest(),'bytes':f.stat().st_size} for f in dest.iterdir() if f.is_file() and f.name!='artifact-inventory.json'];(dest/'artifact-inventory.json').write_text(json.dumps(records,indent=2)+'\n');return
+   records=[{'name':f.name,'sha256':hashlib.sha256(f.read_bytes()).hexdigest(),'bytes':f.stat().st_size} for f in dest.iterdir() if f.is_file() and f.name!='artifact-inventory.json'];(dest/'artifact-inventory.json').write_text(json.dumps(records,indent=2)+'\n');return
   if state['status']=='failed' or not state['observed_process_alive']:raise SystemExit(78)
   time.sleep(60)
 if __name__=='__main__':main()
