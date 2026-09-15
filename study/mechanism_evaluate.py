@@ -13,21 +13,31 @@ def main():
  from study import readiness_eval as evaluation
  class CompatibleAdapter(CheckpointAdapter):
   @torch.no_grad()
+  def rollout_latents(self,history,actions):
+   obs={k:v.cuda() for k,v in history['observations'].items()};acts=torch.as_tensor(np.ascontiguousarray(actions) if isinstance(actions,np.ndarray) else actions,device='cuda',dtype=torch.float32);allacts=torch.cat([history['actions'].cuda(),acts],1);emb=self.model.encode_obs_linked(obs)['visual'];future=[]
+   for _ in range(acts.shape[1]):
+    # Same prefix and batch shape regardless of requested future horizon.
+    encoded=self.model.encode_act(allacts[:,:emb.shape[1]].contiguous());pred=self.model._predict_next_adaln(emb,encoded);future.append(pred);emb=torch.cat([emb,pred],1)
+   return torch.cat(future,1)
+  @torch.no_grad()
   def predict_states(self,history,actions):
-   if self.model.mechanism=='gaussian':return super().predict_states(history,actions)
-   obs={k:v.cuda() for k,v in history['observations'].items()};acts=torch.as_tensor(np.ascontiguousarray(actions) if isinstance(actions,np.ndarray) else actions,device='cuda',dtype=torch.float32);z,_=self.model.rollout(obs,torch.cat([history['actions'].cuda(),acts],1));future=z['visual'][:,obs['visual'].shape[1]:];B,T=future.shape[:2];flat=future.reshape(B*T,1,*future.shape[2:]);results=[]
-   for i in range(0,len(flat),4):
-    decoded=self.model.decode_obs({'visual':flat[i:i+4]})[0]['visual'];encoded=self.features({'visual':decoded});results.append(physical_states(self.probe(encoded)).cpu().numpy())
-   return np.concatenate(results,0).reshape(B,T,-1)
+   future=self.rollout_latents(history,actions);results=[]
+   for t in range(future.shape[1]):
+    z=future[:,t:t+1]
+    if self.model.mechanism=='gaussian':features=z.flatten(2)
+    else:
+     image=self.model.decode_obs({'visual':z})[0]['visual'];features=self.features({'visual':image})
+    results.append(physical_states(self.probe(features)).cpu().numpy())
+   return np.concatenate(results,1)
  evaluation.CheckpointAdapter=CompatibleAdapter;evaluation.run(root,a.run_id,'readiness')
  # Extend completed smoke report with closure against true future encodings.
- folder=root/'runs'/a.run_id;report_path=next(folder.glob('common-readiness-*/metrics.json'));report=json.loads(report_path.read_text());m=json.loads((folder/'manifest.json').read_text());ad=CompatibleAdapter.load(m['checkpoint_path'],folder/'resolved-config.yaml')
+ folder=root/'runs'/a.run_id;report_path=folder/('common-readiness-'+evaluation.provenance(Path(__file__).resolve().parents[1])['git_sha'][:12])/'metrics.json';report=json.loads(report_path.read_text());m=json.loads((folder/'manifest.json').read_text());ad=CompatibleAdapter.load(m['checkpoint_path'],folder/'resolved-config.yaml')
  from datasets.pusht_dset import PushTDataset
  from datasets.img_transforms import default_transform
  data=PushTDataset(data_path=str(root/'datasets/pusht_noise/train'),transform=default_transform());results=[]
  with torch.no_grad():
   for idx in report['probe_episode_selection']['probe_test']:
-   H=min(32,(data.get_seq_length(idx)-11)//5);stop=11+H*5;obs,act,_,_=data.get_frames(idx,list(range(stop)));hist={k:v[None,[0,5,10]].cuda() for k,v in obs.items()};z,_=ad.model.rollout(hist,act[:stop-1].reshape(1,H+2,10).cuda());pred=z['visual'][:,3:];truth=torch.cat([ad.model.encode_obs_linked({'visual':obs['visual'][None,t:t+1].cuda()})['visual'] for t in range(15,stop,5)],1)
+   H=min(32,(data.get_seq_length(idx)-11)//5);stop=11+H*5;obs,act,_,_=data.get_frames(idx,list(range(stop)));hist={k:v[None,[0,5,10]].cuda() for k,v in obs.items()};pred=ad.rollout_latents({'observations':hist,'actions':act[:10].reshape(1,2,10)},act[10:stop-1].reshape(1,H,10));truth=torch.cat([ad.model.encode_obs_linked({'visual':obs['visual'][None,t:t+1].cuda()})['visual'] for t in range(15,stop,5)],1)
    reference=truth.flatten(0,1).var(dim=0,unbiased=False).mean();cycles={}
    if ad.model.mechanism!='gaussian':
     for h in [1,2,4,8,16,32]:

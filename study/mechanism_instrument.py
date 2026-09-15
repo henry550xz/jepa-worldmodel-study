@@ -49,7 +49,11 @@ def main():
             def hook(module,args,out):
                 x=args[0];n=x.shape[0] if name=='encoder' else x.shape[0]*x.shape[1];work[name]=work.get(name,0)+int(n)
             return hook
-        for name in ['encoder','predictor','action_encoder','decoder']:getattr(self,name).register_forward_hook(counter(name))
+        for name in ['predictor','action_encoder','decoder']:getattr(self,name).register_forward_hook(counter(name))
+        original_encode=self.model.encode_obs
+        def counted_encode(obs):
+            work['encoder']=work.get('encoder',0)+int(obs['visual'].shape[0]*obs['visual'].shape[1]);return original_encode(obs)
+        self.model.encode_obs=counted_encode
         stats['parameters']={n:sum(p.numel() for p in getattr(self,n).parameters()) for n in ['encoder','predictor','action_encoder','decoder']}
     train.Trainer.init_models=init
     torch.cuda.reset_peak_memory_stats();start=time.time();sys.argv=['train.py','--config-path',str(Path(train.__file__).resolve().parent/'conf')]+(a.overrides[1:] if a.overrides[:1]==['--'] else a.overrides)
