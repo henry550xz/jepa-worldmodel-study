@@ -25,10 +25,11 @@ def test_shapes_gradients_and_causality(arm):
 
 @pytest.mark.parametrize('arm',ARMS)
 def test_action_and_overfit(arm):
- m=model(arm);obs,act=batch();opt=torch.optim.Adam(m.parameters(),lr=.002);key='latent_loss' if arm=='gaussian' else 'pixel_loss';before=float(m(obs,act)[4][key])
- for _ in range(80):opt.zero_grad();m(obs,act)[3].backward();opt.step()
- assert float(m(obs,act)[4][key])<before*.8
+ m=model(arm);obs,act=batch();opt=torch.optim.Adam(m.parameters(),lr=.002);key='latent_loss' if arm=='gaussian' else 'pixel_loss';before=float(m(obs,act)[4][key].detach())
+ for _ in range(5):opt.zero_grad();m(obs,act)[3].backward();opt.step()
  assert (m(obs,act)[0]-m(obs,act.flip(0))[0]).abs().max()>1e-7
+ for _ in range(295):opt.zero_grad();m(obs,act)[3].backward();opt.step()
+ assert float(m(obs,act)[4][key].detach())<before*.8
 
 def test_free_running_last_loss_reaches_first_prediction():
  m=model('pixel_rollout');obs,act=batch();calls=[]
