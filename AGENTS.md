@@ -24,12 +24,12 @@ If infrastructure fails: preserve evidence, diagnose, repair and safely resume t
 
 ## Current infrastructure and boundaries
 
-- Active pilot observer: controller systemd `jepa-pilot-monitor.service`; detached worker `study.concurrent_pilot` owns execution. The reproduction service is historical/completed. No tmux dependency; infrastructure retries must be idempotent, scientific failures stop for diagnosis.
-- Active pilot state: `/mnt/research/jepa-worldmodel-study-storage/runs/pilot-queue.json`; worker `runs/three-arm-pilot-queue/queue.json`. Historical reproduction state: `runs/reproduction-queue.json`.
+- Completed pilot observer: controller systemd `jepa-pilot-monitor.service`; detached worker `study.concurrent_pilot` owns execution. The reproduction service is historical/completed. No tmux dependency; infrastructure retries must be idempotent, scientific failures stop for diagnosis.
+- Completed pilot state: `/mnt/research/jepa-worldmodel-study-storage/runs/pilot-queue.json`; worker `runs/three-arm-pilot-queue/queue.json`. Historical reproduction state: `runs/reproduction-queue.json`.
 - Confirmed worker: `autodl-jepa`; workspace `/root/autodl-tmp/robotics/jepa-worldmodel-study/`.
 - Read the live queue for the active run and immutable experiment SHA; never assume an old run ID is still active.
-- Authorized active pilot: Pixel/Gaussian/Sparse seed-0 training concurrently, then common evaluation sequentially Pixel → Gaussian → Sparse. Frozen scientific protocol unchanged. No additional sweeps authorized.
-- The three-arm seed-0 pilot above is already authorized, including Pixel and the queued common evaluations. Additional experiments, seeds, sweeps or changes to the frozen scientific protocol require new user authorization.
+- Completed authorized pilot: Pixel/Gaussian/Sparse seed-0 training concurrently, then common evaluation sequentially Pixel → Gaussian → Sparse. Results and retained evidence are linked in the final handoff section. Do not relaunch completed runs; no additional experiments or sweeps are authorized.
+- The three-arm seed-0 pilot above was authorized and is now complete, including Pixel and common evaluations. Additional experiments, seeds, sweeps or changes to the frozen scientific protocol require new user authorization.
 - Verify `mountpoint -q /mnt/research` before controller writes. Keep large artifacts on project data storage, not `/`.
 - Never expose credentials, dump full environments, modify `/root/.ssh`, or alter unrelated projects. Preserve working worker drivers/base packages.
 - Run committed snapshots. Documentation-only handoff updates may advance controller HEAD without changing the active experiment snapshot. Commit/push instruction and handoff changes consistently with repository practice. The monitor updates machine-readable queue state, not the Markdown handoff.

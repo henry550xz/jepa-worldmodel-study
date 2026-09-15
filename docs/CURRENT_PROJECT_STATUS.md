@@ -51,15 +51,21 @@ The user confirmed AutoDL balance exhaustion interrupted the worker on September
 
 Restarted all three arms from seed0 at23:03UTC using documentation-only snapshot `40d8c7840a0a7e96933a42e10c60a926b272430e`; scientific code/configuration are unchanged from the original launch. New run IDs isolate the retries. The persistent observer now follows this snapshot. This is a fresh restart, not checkpoint continuation.
 
+## Milestone 7 — three-arm seed-0 pilot completed and retained
+
+All three arms completed115,308 updates under immutable SHA `40d8c7840a0a7e96933a42e10c60a926b272430e`; all three common evaluations passed execution/consistency checks. Queue finished September15 at10:38:58UTC (06:38:58EDT). Pixel training10h30m01s/evaluation20m55s; Gaussian10h41m11s/16m09s; Sparse10h29m49s/16m49s. Training was concurrent and evaluations sequential; successful queue wall time about11h35m.
+
+Final physical-goal attainment: Pixel0/50, Gaussian6/50, Sparse1/50; ever attaining the threshold15/50,30/50,14/50 respectively. These short-horizon synthetic physical-goal tests are not the official PushT benchmark. Gaussian ranked candidates best (mean Spearman0.271 versus Pixel−0.076/Sparse−0.115); Sparse had best position probes, Pixel best angle probe. One seed and only four horizon32 episodes limit interpretation. Negative results preserved; no claim of universal JEPA superiority.
+
+All three final checkpoints are retained on controller with SHA256 verified against worker originals. Probe weights, candidate scores, metrics and shared candidate banks are retained; all50 bank hashes match across methods. Evidence: `runs/pilot-summary.json`, `runs/pilot-checkpoint-retention.json`, `runs/pilot-evaluation-artifact-inventory.json` under durable project storage. Full comparison, commands and caveats: [THREE_ARM_PILOT_REPORT.md](THREE_ARM_PILOT_REPORT.md).
+
 ## CURRENT / LATEST STATE
 
-- Validated at2026-09-14 23:06UTC: three concurrent training arms advancing, fresh logs and finite observed losses. Pixel398 / Gaussian393 / Sparse401 of115,308 updates. GPU98%,28,752/32,607MiB; data disk31GB free.
-- Immutable run SHA: `40d8c7840a0a7e96933a42e10c60a926b272430e`. Later handoff/service commits do not change training code.
-- Pixel: `pixel-s0-20260914T230335-3649012fd387`.
-- Gaussian: `gaussian-s0-20260914T230335-40a3cf2cc7af`.
-- Sparse: `sparse-s0-20260914T230335-6f99643d9771`.
-- Worker detached queue PID1639; wrapper PIDs1641/1642/1643 at recovery. State `runs/three-arm-pilot-queue/queue.json` under the worker workspace. Controller `jepa-pilot-monitor.service` active; local live state `/mnt/research/jepa-worldmodel-study-storage/runs/pilot-queue.json`. Always inspect live state before acting; do not reuse timestamped PIDs blindly.
-- Recent20-second observed windows/s: Pixel95.93 / Gaussian95.93 / Sparse97.53. Remaining training estimates10.65h /10.65h /10.47h concurrently; approximate training completion September15 09:45UTC. Short-window estimates exclude validation/checkpoint overhead; full common evaluation time remains unknown.
-- Latest validation: successful restart and advancing GPU training, unchanged frozen protocol. No full-pilot scientific results yet.
-- Exact next action: leave the persistent queue running; after all training succeeds it evaluates Pixel → Gaussian → Sparse sequentially. Inspect current processes/logs on continue, preserve failures and stop on unresolved scientific failure. No duplicate launches or extra sweeps.
-- Pending/risks: full-pilot metrics, final checkpoints and evaluation runtime; no intra-epoch checkpoint or validated exact-resume implementation. Another shutdown before the epoch checkpoint would again lose progress. Funding must cover the remaining queue; account balance was not independently inspected.
+- Authorized seed-0 pilot is **complete**, including training, common evaluation, output validation, final checkpoint retention and comparison report. No active experiment queue or next experiment is authorized.
+- Worker `autodl-jepa` observed idle September15 11:35UTC, GPU0%,2MiB used, data disk27GB free. Worker was not shut down; it may still incur rental charges. Controller monitor exited successfully (exit0) after queue completion; inactive is expected. Verify live state before future operations.
+- Immutable completed run SHA: `40d8c7840a0a7e96933a42e10c60a926b272430e`; later documentation commits do not alter it.
+- Pixel `pixel-s0-20260914T230335-3649012fd387`; Gaussian `gaussian-s0-20260914T230335-40a3cf2cc7af`; Sparse `sparse-s0-20260914T230335-6f99643d9771`.
+- Completed queue evidence: controller `/mnt/research/jepa-worldmodel-study-storage/runs/pilot-queue.json`; worker `runs/three-arm-pilot-queue/queue.json`. Do not restart this completed queue or reuse its recorded PIDs. Per-run training manifests say `training_complete`; separate evaluation metrics say `passed`, and queue says `complete`.
+- Latest validated result: complete matched pilot with mixed scientific outcomes, documented above and in the report. `passed` describes evaluator completion, not favorable scientific performance.
+- Exact next action: review the report with the user; await authorization for any additional experiment or changed protocol. Recommended discussion: weak Pixel predicted-state decoding, negative Sparse candidate ranking, goal retention, and broader simulator coverage. These recommendations do not authorize runs.
+- Pending/unknown: multi-seed generalization, broader simulator initial-state coverage, full-run average GPU utilization, and any future follow-up protocol. No remaining execution/retention blocker for this pilot. Billing-interrupted attempts and upstream reproductions remain preserved.
