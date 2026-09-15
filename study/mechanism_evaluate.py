@@ -28,6 +28,11 @@ def main():
  with torch.no_grad():
   for idx in report['probe_episode_selection']['probe_test']:
    H=min(32,(data.get_seq_length(idx)-11)//5);stop=11+H*5;obs,act,_,_=data.get_frames(idx,list(range(stop)));hist={k:v[None,[0,5,10]].cuda() for k,v in obs.items()};z,_=ad.model.rollout(hist,act[:stop-1].reshape(1,H+2,10).cuda());pred=z['visual'][:,3:];truth=torch.cat([ad.model.encode_obs_linked({'visual':obs['visual'][None,t:t+1].cuda()})['visual'] for t in range(15,stop,5)],1)
-   results.append({'episode':idx,'horizons':{str(h):latent_closure(pred[:,h-1:h],truth[:,h-1:h],reference_variance=truth.flatten(0,1).var(dim=0,unbiased=False).mean()) for h in [1,2,4,8,16,32] if h<=H}})
+   reference=truth.flatten(0,1).var(dim=0,unbiased=False).mean();cycles={}
+   if ad.model.mechanism!='gaussian':
+    for h in [1,2,4,8,16,32]:
+     if h<=H:
+      zp=pred[:,h-1:h];image=ad.model.decode_obs({'visual':zp})[0]['visual'];ze=ad.model.encode_obs_linked({'visual':image})['visual'];cycles[str(h)]=latent_closure(zp,ze,reference_variance=reference)
+   results.append({'episode':idx,'horizons':{str(h):latent_closure(pred[:,h-1:h],truth[:,h-1:h],reference_variance=reference) for h in [1,2,4,8,16,32] if h<=H},'decode_reencode_cycle':cycles if cycles else {'status':'not_applicable_untrained_gaussian_decoder'}})
  report['latent_closure']=results;report['readout']='raw encoded-space Gaussian; frozen E(D(predicted)) pixel; raw latent closure reported separately';report_path.write_text(json.dumps(report,indent=2,allow_nan=False)+'\n')
 if __name__=='__main__':main()
