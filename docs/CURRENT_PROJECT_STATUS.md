@@ -1,6 +1,6 @@
 # Current project status
 
-Working snapshot; research history is in [CHATGPT_RESEARCH_HANDOFF.md](CHATGPT_RESEARCH_HANDOFF.md). Updated 2026-09-15 after four-arm mechanism readiness gates and provisional CPU simulation.
+Working snapshot; research history is in [CHATGPT_RESEARCH_HANDOFF.md](CHATGPT_RESEARCH_HANDOFF.md). Updated 2026-09-15 after the specified CPU toy-theory validation.
 
 ## Scientific goal / project definition
 
@@ -21,9 +21,9 @@ Shared seed0, ViT384/AdaLN, batch32 FP32, history3/frameskip5, frozen partitions
 
 Full-run blockers: exact compute is not equal (measured windows/s222.4/296.7/199.7/207.7 for Pixel/rollout/consistency/Gaussian), and teacher-forced versus free-running conditioning differs intentionally. Resolve the budget/conditioning interpretation before freezing a full protocol. Recommended primary design is matched windows/updates with explicit cost reporting; a compute-budget comparison would change update exposure. Draft horizon3 and auxiliary coefficient1 are declared choices, not tuned settings. No permission to launch full training follows from passed smokes.
 
-Separately, `study/linear_gaussian.py` implements a provisional stationary state+nuisance rank-one prediction model.25 CPU-only cells and3 tests passed;43/43 cases away from the candidate boundary matched its analytic prediction. **The intended(beta,rho) theory is not supplied and correspondence remains blocked.** See [LINEAR_GAUSSIAN_PROVISIONAL.md](LINEAR_GAUSSIAN_PROVISIONAL.md); current beta=nuisance amplitude/rho=nuisance persistence are explicit provisional definitions, not an inferred user theory.
+The user has now supplied the exact beta/rho toy hypothesis. The shared-encoder, unit-variance latent-prediction solver and requested CPU sweep are complete:360/360 requested-grid method/seed selections match the analytic prediction, with finite-sample uncertainty near the boundary. Both the interesting regime and JEPA nuisance-selection failure regime are validated. See [LINEAR_GAUSSIAN_THEORY_RESULTS.md](LINEAR_GAUSSIAN_THEORY_RESULTS.md). The earlier provisional fixed-target reference is preserved, not treated as the specified JEPA objective.
 
-Exact next action: obtain intended beta/rho equations and review the compute/information audit with the user. Complete theory correspondence and budget decisions before any full-run preparation/launch. No active GPU job; no additional training authorized beyond completed bounded smokes.
+Exact next action: review/freeze the robotics compute/information budget before authorizing full runs. The theory-definition blocker is resolved. No additional robotics training was launched or authorized by this CPU task. Last worker observation remains the prior idle gate observation; worker was not contacted during this task.
 
 ## Environment, snapshots and retained evidence
 
@@ -32,9 +32,9 @@ Worker `autodl-jepa` observed idle after the evaluation gate (GPU0%,2MiB used); 
 - Training smoke snapshot `1ab94751e93e5f0e73cdab775db3400406323b9f`; evaluator snapshot `0e7c3f69f68f2d09c36654fa96d3876468092bb4`. Later config-wiring/instrumentation/documentation commits keep tested numerical settings but are not new trained snapshots.
 - Controller `runs/mechanism-smokes-20260915-r2/state.json`, `audit.json`, `retention.json` under durable storage identify four run IDs and verified evidence. Per-run manifests, resolved YAML, telemetry, logs, probes and evaluation metrics retained. Disposable8-update checkpoints remain on worker; validated older research checkpoints remain retained on controller.
 - Training peak allocated/reserved GiB: Pixel11.24/12.46, rollout7.77/8.41, consistency12.88/14.08, Gaussian11.36/11.90.24GiB+ recommended for sequential work pending longer profiling. No new concurrency assumption.
-- Theory artifacts: storage `artifacts/linear-gaussian-provisional-20260915/results.json` and `phase-grid.png`.
+- Specified theory snapshot `6732a6d3ade3559a639c11a104c5dfaf2fe99d98`; artifacts: storage `artifacts/linear-gaussian-theory-20260915/` (JSON, PNG, PDF). Earlier provisional artifacts remain preserved.
 - Initial80-update synthetic overfit criterion failed consistency arm;300 equal updates passed all arms without objective/threshold change. First evaluator prefix numerical assertion failed; consistent causal prefixes/per-step readout fixed it without retraining or loosening tolerances. Failed evidence preserved.
 
 ## Prior scientific results and limitations
 
-Completed pilot and inference controls remain in [THREE_ARM_PILOT_REPORT.md](THREE_ARM_PILOT_REPORT.md), [PIXEL_FAILURE_ANALYSIS.md](PIXEL_FAILURE_ANALYSIS.md), [REENCODE_CONTROL_RESULTS.md](REENCODE_CONTROL_RESULTS.md). Those controls showed partial feedback/readout repair but weak final planning; this motivated the mechanism study. Do not substitute older checkpoints as matched new-arm results. Original pilot checkpoint integrity: storage `runs/pilot-checkpoint-retention.json`; control evidence `artifacts/reencode-control-20260915-r3/retention-verification.json`. Single-seed, post-hoc and short-horizon limitations remain. Full scientific method superiority and the exact requested theory boundary are unresolved.
+Completed pilot and inference controls remain in [THREE_ARM_PILOT_REPORT.md](THREE_ARM_PILOT_REPORT.md), [PIXEL_FAILURE_ANALYSIS.md](PIXEL_FAILURE_ANALYSIS.md), [REENCODE_CONTROL_RESULTS.md](REENCODE_CONTROL_RESULTS.md). Those controls showed partial feedback/readout repair but weak final planning; this motivated the mechanism study. Do not substitute older checkpoints as matched new-arm results. Original pilot checkpoint integrity: storage `runs/pilot-checkpoint-retention.json`; control evidence `artifacts/reencode-control-20260915-r3/retention-verification.json`. Single-seed, post-hoc and short-horizon limitations remain. General scientific method superiority remains unresolved; the specified toy boundary is validated within its assumptions.
