@@ -7,7 +7,7 @@ MODES=('original','reencode','teacher_forced_oracle')
 def atomic(path,data):
  tmp=path.with_suffix('.tmp');tmp.write_text(json.dumps(data,indent=2,allow_nan=False)+'\n');tmp.replace(path)
 
-def run(root,out,repo):
+def run(root,out,repo,reuse=None):
  import torch,numpy as np
  from study.adapters import CheckpointAdapter,SimulatorAdapter,physical_cost,cem
  from study.probes import physical_states
@@ -52,10 +52,15 @@ def run(root,out,repo):
     result.extend(physical_cost(self.predict_states(batch,cs[:,-1:])[:,-1],goal))
    return np.asarray(result)
  controls={m:Control(m) for m in ['original','reencode']};data=PushTDataset(data_path=str(root/'datasets/pusht_noise/train'),transform=default_transform());outputs={m:[] for m in MODES}
+ if reuse:
+  source=root/'artifacts'/reuse;prior=json.loads((source/'state.json').read_text())
+  for k in ['checkpoint_sha256','probe_sha256','partitions_sha256','planning_settings']:assert prior[k]==status[k]
+  outputs=json.loads((source/'open-loop.json').read_text());assert all(len(outputs[m])==124 for m in MODES)
+  status['reused_open_loop']=str(source);status['reused_open_loop_sha256']=hashlib.sha256((source/'open-loop.json').read_bytes()).hexdigest()
  try:
   status.update(stage='open_loop',completed=0,total=124);atomic(out/'state.json',status)
   with torch.inference_mode():
-   for num,idx in enumerate(old['probe_episode_selection']['probe_test']):
+   for num,idx in enumerate([] if reuse else old['probe_episode_selection']['probe_test']):
     H=min(32,(data.get_seq_length(idx)-11)//5);stop=11+5*H;obs,actions,states,_=data.get_frames(idx,list(range(stop)));history={'observations':{k:v[None,[0,5,10]] for k,v in obs.items()},'actions':actions[:10].reshape(1,2,10)};future={k:v[None,15:stop:5] for k,v in obs.items()};truth=np.concatenate([ad.true_observation_states({k:v[:,j:j+4] for k,v in future.items()}) for j in range(0,H,4)],1);preds={m:c.predict_states(history,actions[10:stop-1].reshape(1,H,10)) for m,c in controls.items()}
     teacher=[]
     for h in range(1,H+1):
@@ -65,6 +70,7 @@ def run(root,out,repo):
     short=controls['reencode'].predict_states(history,actions[10:20].reshape(1,2,10));np.testing.assert_allclose(short,preds['reencode'][:,:2],atol=1e-3,rtol=1e-4)
     for m,pred in preds.items():outputs[m].append({'episode':idx,'metrics':open_loop_metrics(truth,pred,states[None,15:stop:5,:5].numpy())})
     status.update(completed=num+1,updated_at=time.time());atomic(out/'state.json',status)
+   outputs=json.loads(json.dumps(outputs))  # Canonical JSON horizon keys.
    atomic(out/'open-loop.json',outputs)
    # Verify original physical metrics against retained evaluation, not just new outputs.
    for prior,current in zip(old['open_loop'],outputs['original']):
@@ -96,9 +102,9 @@ def run(root,out,repo):
  finally:atomic(out/'state.json',status)
 
 def main():
- p=argparse.ArgumentParser();p.add_argument('--output',required=True);a=p.parse_args()
+ p=argparse.ArgumentParser();p.add_argument('--output',required=True);p.add_argument('--reuse-open-loop');a=p.parse_args()
  from study.run import worker_root_checked
  root=worker_root_checked('/root/autodl-tmp/robotics/jepa-worldmodel-study');os.environ.update(DATASET_DIR=str(root/'datasets'),TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD='1',SDL_VIDEODRIVER='dummy',WANDB_MODE='offline',TMPDIR=str(root/'caches/tmp'),MPLCONFIGDIR=str(root/'caches/matplotlib'),XDG_CACHE_HOME=str(root/'caches/xdg'),TORCH_HOME=str(root/'caches/torch'))
  with (root/'runs/reencode-control.lock').open('a') as lock:
-  fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB);out=root/'artifacts'/a.output;out.mkdir(exist_ok=False);run(root,out,Path(__file__).resolve().parents[1])
+  fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB);out=root/'artifacts'/a.output;out.mkdir(exist_ok=False);run(root,out,Path(__file__).resolve().parents[1],a.reuse_open_loop)
 if __name__=='__main__':main()
