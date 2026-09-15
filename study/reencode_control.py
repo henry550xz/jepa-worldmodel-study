@@ -29,8 +29,9 @@ def run(root,out,repo):
   def predict_states(self,history,actions):
    if self.mode=='original':return super().predict_states(history,actions)
    obs={k:v.cuda() for k,v in history['observations'].items()};actions=torch.as_tensor(np.ascontiguousarray(actions) if isinstance(actions,np.ndarray) else actions,device='cuda',dtype=torch.float32)
-   past=history['actions'].cuda();emb=model.encode_obs_linked(obs)['visual'];encoded_act=model.encode_act(torch.cat([past,actions],1));result=[]
+   past=history['actions'].cuda();emb=model.encode_obs_linked(obs)['visual'];all_act=torch.cat([past,actions],1);result=[]
    for i in range(actions.shape[1]):
+    encoded_act=model.encode_act(all_act[:,:emb.shape[1]].contiguous())
     pred=model._predict_next_adaln(emb,encoded_act)
     image=model.decode_obs({'visual':pred})[0]['visual']
     # Decoder emits the same [-1,1] normalized image convention consumed by E.
