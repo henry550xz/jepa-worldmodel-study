@@ -53,7 +53,7 @@ def main():
       ret=children[arm].poll()
       if ret is None:continue
       if ret!=0:raise RuntimeError(f'{arm} training exited{ret}')
-     elif Path(f'/proc/{pid}').exists():continue
+     elif Path(f'/proc/{pid}/stat').exists() and Path(f'/proc/{pid}/stat').read_text().split(') ',1)[1].split()[0]!='Z':continue
      verify(arm);del active[arm];state['active_training']=list(active);write(state_path,state)
     time.sleep(15)
    for arm in pair:
